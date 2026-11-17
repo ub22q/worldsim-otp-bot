@@ -28,11 +28,12 @@ MERCHANT_NAME = "WorldSIM Hub"
 SUPPORT_USERNAME = "@Worldsim_hub"
 SUPPORT_LINK = "https://t.me/Worldsim_hub"
 
+# UPDATED CHANNELS & NEW INVITE LINKS
 RECEIPT_CHANNEL_ID = -1004497033717
 UPDATE_CHANNEL_ID  = -1004336033917
 
-PROOFS_CHANNEL_LINK   = "https://t.me/+3gxG5EZyJ2UzY2Rl"
-OFFICIAL_CHANNEL_LINK = "https://t.me/smmupdatess"
+PROOFS_CHANNEL_LINK   = "https://t.me/+Qx7t_WPf2lNkOTY9"
+OFFICIAL_CHANNEL_LINK = "https://t.me/+9PSAXiY4vBRlNjA1"
 
 CHANNELS = [
     {
@@ -121,7 +122,6 @@ active_orders = {}
 user_search_state = {}
 user_recent_orders = {}
 BOT_USERNAME_CACHE = None
-# =================================================
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -153,7 +153,6 @@ def get_bot_username():
             BOT_USERNAME_CACHE = "WorldsimOtp_bot"
     return BOT_USERNAME_CACHE
 
-# ================= FRESH DATABASE (0.0 BALANCE START) =================
 db_pool = None
 
 def get_pool():
@@ -260,7 +259,6 @@ def set_referrer(uid, ref_id):
         if conn:
             release_db_conn(conn)
 
-# ================= FORCE JOIN =================
 def get_user_unjoined_channels(uid):
     if uid in ALL_ADMINS:
         return []
@@ -484,8 +482,6 @@ def send_payment_qr(chat_id, uid, amount, upi_choice=1):
         f"⚠️ <b>Important:</b> Payment hote hi uska <b>Screenshot</b> send karein approval ke liye."
     )
     bot.send_photo(chat_id, qr_url, caption=caption, reply_markup=get_qr_toggle_menu(upi_choice, amount), parse_mode="HTML")
-
-# ================= 20-MINUTE POLLING LOOP =================
 def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg_id):
     active_orders[activation_id] = {"status": "waiting"}
     status_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getStatus&id={activation_id}"
@@ -566,7 +562,6 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
     )
     bot.send_message(cid, timeout_msg, parse_mode="HTML")
 
-# ================= ADMIN ACTIONS & BROADCAST =================
 @bot.message_handler(commands=["addbalance", "addbal", "givebal"])
 def admin_add_balance(m):
     uid = m.from_user.id
@@ -754,7 +749,7 @@ def broadcast_message(m):
             failed += 1
 
     bot.send_message(m.chat.id, f"✅ Broadcast Complete!\nDelivered: <b>{sent}</b> | Failed: <b>{failed}</b>", parse_mode="HTML")
-    # ================= USER ENTRY =================
+
 @bot.message_handler(commands=["start"])
 def start(m):
     uid = m.from_user.id
@@ -901,7 +896,6 @@ def photo_flow(m):
 
     bot.reply_to(m, f"✅ Screenshot receive ho gaya! Admin approval ke baad balance add ho jayega.\nSupport: {SUPPORT_USERNAME}", parse_mode="HTML")
 
-# ================= CALLBACK ROUTING =================
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
     uid = call.from_user.id
@@ -996,7 +990,7 @@ def callbacks(call):
                     reply_markup=get_service_picker_menu()
                 )
             except Exception:
-                bot.edit_message_caption(caption=text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_picker_menu(), parse_mode="HTML")
+                                bot.edit_message_caption(caption=text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_picker_menu(), parse_mode="HTML")
         else:
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
         bot.answer_callback_query(call.id)
@@ -1202,7 +1196,7 @@ def callbacks(call):
             "service": s_name,
             "country": f"{country_data.get('flag')} {country_data.get('name')}",
             "phone": phone,
-                      "status": "Waiting for OTP"
+            "status": "Waiting for OTP"
         }
 
         cancel_mk = InlineKeyboardMarkup()
@@ -1235,4 +1229,4 @@ while True:
     except Exception as e:
         print(f"Connection retry error: {e}")
         time.sleep(3)
-            
+        
