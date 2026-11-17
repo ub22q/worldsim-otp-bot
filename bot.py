@@ -373,7 +373,7 @@ def format_user_tag(buyer_id, buyer_username):
         return f"@{u}"
     str_uid = str(buyer_id)
     return str_uid[:2] + "••••" + str_uid[-2:] if len(str_uid) > 4 else "••••" + str_uid[-2:]
-            def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
+    def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
     user_tag = format_user_tag(buyer_id, buyer_username)
     str_phone = str(phone_num)
     masked_phone = str_phone[:4] + "••••" + str_phone[-2:] if len(str_phone) > 6 else str_phone[:2] + "••••"
