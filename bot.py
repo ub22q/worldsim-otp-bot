@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2 import pool
 
 # ================= CONFIGURATION =================
-BOT_TOKEN = "9109714291:AAFQny4eo62NZQy7TAnxXJQf3dG420gw2O4"
+BOT_TOKEN = "9109714291:AAGpK80XtBacAcm8VRnThBBR4t7CxxK6lKM"
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 
@@ -802,7 +802,6 @@ def photo_flow(m):
         send_force_join_prompt(m.chat.id)
         return
 
-    # SINGLE SCREENSHOT ANTI-SPAM LOCK
     if has_pending_deposit(uid):
         bot.reply_to(
             m,
@@ -1019,8 +1018,8 @@ def callbacks(call):
         if not phone or not activation_id:
             bot.edit_message_text(f"❌ Failed: {res.get('error') or res.get('msg') or 'Stock unavailable'}", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
             return
-           update_bal(uid, -p)
-        increment_purchase_count(uid)
+        update_bal(uid, -p)
+                increment_purchase_count(uid)
         user_recent_orders[uid] = {"service": s_name, "country": f"{country_data.get('flag')} {country_data.get('name')}", "phone": phone, "status": "Waiting for OTP"}
         cancel_mk = InlineKeyboardMarkup()
         cancel_mk.add(InlineKeyboardButton("❌ Cancel Order & Refund", callback_data=f"cancel_order_{activation_id}_{p}"))
