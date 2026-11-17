@@ -35,19 +35,10 @@ PROOFS_CHANNEL_LINK   = "https://t.me/+Qx7t_WPf2lNkOTY9"
 OFFICIAL_CHANNEL_LINK = "https://t.me/+9PSAXiY4vBRlNjA1"
 
 CHANNELS = [
-    {
-        "id": RECEIPT_CHANNEL_ID,
-        "name": "🧾 Official Receipts & Proofs",
-        "link": PROOFS_CHANNEL_LINK
-    },
-    {
-        "id": UPDATE_CHANNEL_ID,
-        "name": "📢 WorldSIM Updates Channel",
-        "link": OFFICIAL_CHANNEL_LINK
-    }
+    {"id": RECEIPT_CHANNEL_ID, "name": "🧾 Official Receipts & Proofs", "link": PROOFS_CHANNEL_LINK},
+    {"id": UPDATE_CHANNEL_ID,  "name": "📢 WorldSIM Updates Channel",  "link": OFFICIAL_CHANNEL_LINK}
 ]
 
-# PREMIUM ROYAL GOLD & DARK BANNERS
 FORCE_JOIN_IMAGE = "https://placehold.co/1200x500/090d16/f59e0b.png?text=✦+WORLDSIM+HUB+VIP+✦%0AVerify+Channels+To+Unlock+Store&font=playfair-display"
 MAIN_MENU_IMAGE  = "https://placehold.co/1200x500/090d16/fbbf24.png?text=✦+WORLDSIM+HUB+VIP+✦%0APremium+OTP+%26+Virtual+SIM+Store&font=playfair-display"
 BROADCAST_IMAGE  = "https://placehold.co/1200x500/111827/f59e0b.png?text=✦+WORLDSIM+HUB+NOTICE+✦%0AOfficial+VIP+Announcement&font=playfair-display"
@@ -72,7 +63,6 @@ SERVICES = {
 }
 
 CATALOG = {
-    # TELEGRAM (+10 MARGIN ADDED ON EACH)
     "tg": [
         {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 38.56},
         {"id": "34",  "name": "Chile",          "flag": "🇨🇱", "price": 44.21},
@@ -86,7 +76,6 @@ CATALOG = {
         {"id": "22",  "name": "India",          "flag": "🇮🇳", "price": 86.75},
         {"id": "16",  "name": "United Kingdom", "flag": "🇬🇧", "price": 140.00}
     ],
-    # WHATSAPP (ONLY YOUR 8 SELECTED COUNTRIES & NEW PRICES)
     "wa": [
         {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 30.00},
         {"id": "34",  "name": "Chile",          "flag": "🇨🇱", "price": 35.00},
@@ -117,6 +106,7 @@ CATALOG = {
 active_orders = {}
 user_search_state = {}
 user_recent_orders = {}
+user_dep_cache = {}
 BOT_USERNAME_CACHE = None
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -124,7 +114,6 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"WorldSIM Hub VIP Running 24/7!")
-
     def log_message(self, format, *args):
         return
 
@@ -137,7 +126,6 @@ threading.Thread(target=run_http_server, daemon=True).start()
 
 telebot.apihelper.READ_TIMEOUT = 60
 telebot.apihelper.CONNECT_TIMEOUT = 30
-
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=4)
 
 def get_bot_username():
@@ -149,7 +137,6 @@ def get_bot_username():
             BOT_USERNAME_CACHE = "WorldsimOtp_bot"
     return BOT_USERNAME_CACHE
 
-# ================= DATABASE WITH PURCHASE TRACKING & REFERRAL =================
 db_pool = None
 
 def get_pool():
@@ -176,11 +163,13 @@ def init_db():
                 balance REAL DEFAULT 0.0,
                 referred_by BIGINT DEFAULT 0,
                 purchased_count INT DEFAULT 0,
-                ref_paid BOOLEAN DEFAULT FALSE
+                ref_paid BOOLEAN DEFAULT FALSE,
+                pending_dep BOOLEAN DEFAULT FALSE
             );
             """)
             cur.execute("ALTER TABLE worldsim_users ADD COLUMN IF NOT EXISTS purchased_count INT DEFAULT 0;")
             cur.execute("ALTER TABLE worldsim_users ADD COLUMN IF NOT EXISTS ref_paid BOOLEAN DEFAULT FALSE;")
+            cur.execute("ALTER TABLE worldsim_users ADD COLUMN IF NOT EXISTS pending_dep BOOLEAN DEFAULT FALSE;")
         conn.commit()
     except Exception as e:
         print(f"Database Init Error: {e}")
@@ -189,9 +178,6 @@ def init_db():
             release_db_conn(conn)
 
 init_db()
-
-user_dep_cache = {}
-
 def get_user(uid):
     uid = int(uid)
     conn = None
@@ -202,7 +188,7 @@ def get_user(uid):
             r = cur.fetchone()
             if r:
                 return float(r[0]), int(r[1]), int(r[2])
-            cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid) VALUES (%s, 0.0, 0, 0, FALSE) ON CONFLICT DO NOTHING;", (uid,))
+            cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep) VALUES (%s, 0.0, 0, 0, FALSE, FALSE) ON CONFLICT DO NOTHING;", (uid,))
         conn.commit()
         return 0.0, 0, 0
     except Exception as e:
@@ -216,6 +202,39 @@ def get_bal(uid):
     bal, _, _ = get_user(uid)
     return bal
 
+def has_pending_deposit(uid):
+    uid = int(uid)
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT COALESCE(pending_dep, FALSE) FROM worldsim_users WHERE user_id = %s;", (uid,))
+            r = cur.fetchone()
+            return bool(r[0]) if r else False
+    except Exception:
+        return False
+    finally:
+        if conn:
+            release_db_conn(conn)
+
+def set_pending_deposit(uid, status: bool):
+    uid = int(uid)
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute("""
+            INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep)
+            VALUES (%s, 0.0, 0, 0, FALSE, %s)
+            ON CONFLICT (user_id) DO UPDATE SET pending_dep = %s;
+            """, (uid, status, status))
+        conn.commit()
+    except Exception as e:
+        print(f"set_pending_deposit Error: {e}")
+    finally:
+        if conn:
+            release_db_conn(conn)
+
 def update_bal(uid, amt):
     uid = int(uid)
     amt = float(amt)
@@ -224,8 +243,8 @@ def update_bal(uid, amt):
         conn = get_db_conn()
         with conn.cursor() as cur:
             cur.execute("""
-            INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid) 
-            VALUES (%s, GREATEST(0.0, %s), 0, 0, FALSE)
+            INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep) 
+            VALUES (%s, GREATEST(0.0, %s), 0, 0, FALSE, FALSE)
             ON CONFLICT (user_id) 
             DO UPDATE SET balance = GREATEST(0.0, worldsim_users.balance + %s)
             RETURNING balance;
@@ -266,7 +285,7 @@ def set_referrer(uid, ref_id):
             cur.execute("SELECT referred_by FROM worldsim_users WHERE user_id = %s;", (uid,))
             r = cur.fetchone()
             if not r:
-                cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid) VALUES (%s, 0.0, %s, 0, FALSE);", (uid, ref_id))
+                cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep) VALUES (%s, 0.0, %s, 0, FALSE, FALSE);", (uid, ref_id))
             elif r[0] == 0:
                 cur.execute("UPDATE worldsim_users SET referred_by = %s WHERE user_id = %s;", (ref_id, uid))
         conn.commit()
@@ -292,10 +311,10 @@ def process_referral_reward(uid):
                 try:
                     bot.send_message(
                         ref_id,
-                        f"🎁 <b>New Referral Bonus!</b>\n\n"
-                        f"Aapke link se ek naye user ne join kiya!\n"
-                        f"💰 Reward Added: <b>+Rs {PER_REFER_REWARD:.2f}</b>\n"
-                        f"💳 New Balance: <b>Rs {new_ref_bal:.2f}</b>",
+                        f"🎁 <b>New VIP Referral Bonus!</b>\n\n"
+                        f"Aapke link se ek naye member ne join kiya!\n"
+                        f"💰 Reward Added: <b>+₹{PER_REFER_REWARD:.2f}</b>\n"
+                        f"💳 New Balance: <b>₹{new_ref_bal:.2f}</b>",
                         parse_mode="HTML"
                     )
                 except Exception:
@@ -306,7 +325,6 @@ def process_referral_reward(uid):
         if conn:
             release_db_conn(conn)
 
-# ================= FORCE JOIN & VIP UI HELPERS =================
 def get_user_unjoined_channels(uid):
     if uid in ALL_ADMINS:
         return []
@@ -355,8 +373,7 @@ def format_user_tag(buyer_id, buyer_username):
         return f"@{u}"
     str_uid = str(buyer_id)
     return str_uid[:2] + "••••" + str_uid[-2:] if len(str_uid) > 4 else "••••" + str_uid[-2:]
-
-def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
+            def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
     user_tag = format_user_tag(buyer_id, buyer_username)
     str_phone = str(phone_num)
     masked_phone = str_phone[:4] + "••••" + str_phone[-2:] if len(str_phone) > 6 else str_phone[:2] + "••••"
@@ -431,9 +448,7 @@ def get_feedback_menu(service_name):
 
 def get_service_menu():
     markup = InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        InlineKeyboardButton("🛒 BROWSE VIP SERVICES", callback_data="open_browse_services")
-    )
+    markup.add(InlineKeyboardButton("🛒 BROWSE VIP SERVICES", callback_data="open_browse_services"))
     markup.add(
         InlineKeyboardButton("💳 ADD BALANCE", callback_data="menu_dep"),
         InlineKeyboardButton("📦 MY ORDERS", callback_data="menu_orders")
@@ -458,9 +473,7 @@ def get_service_picker_menu():
         InlineKeyboardButton("🌐 Google/Gmail OTP", callback_data="page_go_0"),
         InlineKeyboardButton("📸 Instagram OTP", callback_data="page_ig_0")
     )
-    markup.add(
-        InlineKeyboardButton("📘 Facebook OTP", callback_data="page_fb_0")
-    )
+    markup.add(InlineKeyboardButton("📘 Facebook OTP", callback_data="page_fb_0"))
     markup.add(InlineKeyboardButton("🏠 Back to VIP Home", callback_data="back_main"))
     return markup
 
@@ -519,6 +532,15 @@ def get_qr_toggle_menu(active_upi_num, amt):
     return mk
 
 def send_payment_qr(chat_id, uid, amount, upi_choice=1):
+    if has_pending_deposit(uid):
+        bot.send_message(
+            chat_id,
+            "⏳ <b>Aapka ek payment screenshot pehle se verification ke liye pending hai!</b>\n\n"
+            "Ek baar me sirf <b>1 payment request</b> hi bhej sakte hain. Admin approval ke baad hi naya payment karein.",
+            parse_mode="HTML"
+        )
+        return
+
     chosen_upi = UPI_ID_1 if upi_choice == 1 else UPI_ID_2
     user_dep_cache[uid] = {"amt": amount, "upi": upi_choice}
     qr_url = generate_dynamic_qr_url(chosen_upi, amount)
@@ -528,7 +550,7 @@ def send_payment_qr(chat_id, uid, amount, upi_choice=1):
         f"💳 <b>Deposit Amount:</b> ₹{amount:.2f}\n\n"
         f"📲 <b>UPI ID:</b> <code>{chosen_upi}</code>\n"
         f"🛠️ <b>Support:</b> {SUPPORT_USERNAME}\n\n"
-        f"⚠️ <b>Note:</b> Payment karne ke turant baad <b>Screenshot</b> bhejein approval ke liye."
+        f"⚠️ <b>Important:</b> Payment karne ke baad <b>sirf 1 baar Screenshot</b> bhejein. Approval se pehle dobara photo send nahi hogi."
     )
     bot.send_photo(chat_id, qr_url, caption=caption, reply_markup=get_qr_toggle_menu(upi_choice, amount), parse_mode="HTML")
 
@@ -537,9 +559,7 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
     status_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getStatus&id={activation_id}"
     cancel_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=setStatus&status=8&id={activation_id}"
     
-    max_checks = 300
-    
-    for check in range(max_checks):
+    for check in range(300):
         time.sleep(4)
         if active_orders.get(activation_id, {}).get("status") == "cancelled_by_user":
             del active_orders[activation_id]
@@ -555,16 +575,10 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
                 if otp and otp.lower() != "none":
                     bot.send_message(cid, f"✅ <b>Aapka VIP OTP Code:</b> <code>{otp}</code>", parse_mode="HTML")
                     time.sleep(1)
-                    bot.send_message(
-                        cid,
-                        f"🌟 <b>Order Complete!</b>\n\nAapko hamari <b>{service_name}</b> service kaisi lagi? Rate karein:",
-                        reply_markup=get_feedback_menu(service_name),
-                        parse_mode="HTML"
-                    )
+                    bot.send_message(cid, f"🌟 <b>Order Complete!</b>\n\nAapko hamari <b>{service_name}</b> service kaisi lagi? Rate karein:", reply_markup=get_feedback_menu(service_name), parse_mode="HTML")
                     if activation_id in active_orders:
                         del active_orders[activation_id]
                     return
-
             elif "STATUS_CANCEL" in text_res:
                 new_bal = update_bal(uid, price)
                 bot.send_message(cid, f"❌ Order server dwara cancel kar diya gaya.\n<b>₹{price:.2f} refund kar diye gaye hain!</b>\nWallet Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
@@ -574,24 +588,17 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
             else:
                 try:
                     res = r.json()
-                    status = res.get("status", "")
-                    if status == "STATUS_OK" or "code" in res:
+                    if res.get("status") == "STATUS_OK" or "code" in res:
                         otp = res.get("code") or res.get("sms")
                         if otp and str(otp).lower() != "none":
                             bot.send_message(cid, f"✅ <b>Aapka VIP OTP Code:</b> <code>{otp}</code>", parse_mode="HTML")
                             time.sleep(1)
-                            bot.send_message(
-                                cid,
-                                f"🌟 <b>Order Complete!</b>\n\nAapko hamari <b>{service_name}</b> service kaisi lagi? Rate karein:",
-                                reply_markup=get_feedback_menu(service_name),
-                                parse_mode="HTML"
-                            )
+                            bot.send_message(cid, f"🌟 <b>Order Complete!</b>\n\nAapko hamari <b>{service_name}</b> service kaisi lagi? Rate karein:", reply_markup=get_feedback_menu(service_name), parse_mode="HTML")
                             if activation_id in active_orders:
                                 del active_orders[activation_id]
                             return
                 except Exception:
                     pass
-
         except Exception as e:
             print(f"Polling error: {e}")
 
@@ -603,21 +610,11 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
     new_bal = update_bal(uid, price)
     if activation_id in active_orders:
         del active_orders[activation_id]
-
-    timeout_msg = (
-        f"⏳ <b>20 Minute Timeout!</b>\n\n"
-        f"20 minute me OTP receive nahi hua. Order cancel kar diya gaya hai.\n\n"
-        f"💰 <b>Refund:</b> ₹{price:.2f} wallet me wapas add ho gaye hain.\n"
-        f"Current Balance: <b>₹{new_bal:.2f}</b>"
-    )
-    bot.send_message(cid, timeout_msg, parse_mode="HTML")
-
+    bot.send_message(cid, f"⏳ <b>20 Minute Timeout!</b>\n\n20 minute me OTP receive nahi hua. Order cancel kar diya gaya hai.\n\n💰 <b>Refund:</b> ₹{price:.2f} wallet me wapas add ho gaye hain.\nCurrent Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
 @bot.message_handler(commands=["list", "users", "userlist"])
 def admin_users_list(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
+    if m.from_user.id not in ALL_ADMINS:
         return
-
     conn = None
     rows = []
     try:
@@ -636,57 +633,41 @@ def admin_users_list(m):
         bot.reply_to(m, "Abhi tak koi user registered nahi hai.")
         return
 
-    total_users = len(rows)
-    total_bal = sum(float(r[1]) for r in rows)
-    total_buys = sum(int(r[2]) for r in rows)
-
     header = (
         f"╭━━━✦ <b>WORLDSIM HUB USER LIST</b> ✦━━━╮\n"
-        f"👥 <b>Total Users:</b> {total_users}\n"
-        f"💰 <b>Total Wallet Bal:</b> ₹{total_bal:.2f}\n"
-        f"🛒 <b>Total Accounts Bought:</b> {total_buys}\n"
+        f"👥 <b>Total Users:</b> {len(rows)}\n"
+        f"💰 <b>Total Wallet Bal:</b> ₹{sum(float(r[1]) for r in rows):.2f}\n"
+        f"🛒 <b>Total Accounts Bought:</b> {sum(int(r[2]) for r in rows)}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
     )
-
-    lines = []
-    for idx, r in enumerate(rows, 1):
-        u_id, u_bal, u_buys = r[0], float(r[1]), int(r[2])
-        lines.append(f"{idx}. <code>{u_id}</code> | Bal: <b>₹{u_bal:.2f}</b> | Buys: <b>{u_buys}</b>")
-
     chunk = header
-    for line in lines:
-        if len(chunk) + len(line) + 2 > 3800:
+    for idx, r in enumerate(rows, 1):
+        line = f"{idx}. <code>{r[0]}</code> | Bal: <b>₹{float(r[1]):.2f}</b> | Buys: <b>{int(r[2])}</b>\n"
+        if len(chunk) + len(line) > 3800:
             bot.send_message(m.chat.id, chunk, parse_mode="HTML")
             chunk = ""
-        chunk += line + "\n"
-
+        chunk += line
     if chunk:
         bot.send_message(m.chat.id, chunk, parse_mode="HTML")
-            @bot.message_handler(commands=["addbalance", "addbal", "givebal"])
-def admin_add_balance(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
-        return
 
+@bot.message_handler(commands=["addbalance", "addbal", "givebal"])
+def admin_add_balance(m):
+    if m.from_user.id not in ALL_ADMINS:
+        return
     parts = m.text.split()
     if len(parts) < 3:
         bot.reply_to(m, "Format: <code>/addbalance <user_id> <amount></code>", parse_mode="HTML")
         return
-
     try:
-        target_uid = int(parts[1])
-        amount = float(parts[2])
+        target_uid, amount = int(parts[1]), float(parts[2])
     except ValueError:
         bot.reply_to(m, "User ID aur Amount sahi numbers hone chahiye!")
         return
-
     if amount <= 0:
-        bot.reply_to(m, "Amount 0 se bada hona chahiye!")
         return
-
     new_bal = update_bal(target_uid, amount)
+    set_pending_deposit(target_uid, False)
     bot.reply_to(m, f"✅ Added ₹{amount:.2f} to <code>{target_uid}</code>\nNaya Balance: ₹{new_bal:.2f}", parse_mode="HTML")
-
     try:
         bot.send_message(target_uid, f"🎉 <b>Wallet me ₹{amount:.2f} add ho gaye hain!</b>\nBalance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
     except Exception:
@@ -694,139 +675,41 @@ def admin_add_balance(m):
 
 @bot.message_handler(commands=["checkbalance", "checkbal", "userbal"])
 def admin_check_user_balance(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
+    if m.from_user.id not in ALL_ADMINS:
         return
-
     parts = m.text.split()
     if len(parts) < 2:
         bot.reply_to(m, "Format: <code>/checkbalance <user_id></code>", parse_mode="HTML")
         return
-
     try:
         target_uid = int(parts[1])
     except ValueError:
-        bot.reply_to(m, "User ID ek valid number honi chahiye!")
         return
-
     user_bal, ref_by, buys = get_user(target_uid)
-    info_text = (
-        f"👤 <b>WorldSIM Hub VIP User Details:</b>\n\n"
-        f"• <b>User ID:</b> <code>{target_uid}</code>\n"
-        f"• <b>Current Balance:</b> <b>₹{user_bal:.2f}</b>\n"
-        f"• <b>Accounts Bought:</b> <b>{buys}</b>\n"
-        f"• <b>Referred By:</b> <code>{ref_by if ref_by != 0 else 'None'}</code>"
-    )
-    bot.reply_to(m, info_text, parse_mode="HTML")
+    bot.reply_to(m, f"👤 <b>VIP User Details:</b>\n\n• <b>User ID:</b> <code>{target_uid}</code>\n• <b>Balance:</b> <b>₹{user_bal:.2f}</b>\n• <b>Accounts Bought:</b> <b>{buys}</b>\n• <b>Referred By:</b> <code>{ref_by if ref_by != 0 else 'None'}</code>", parse_mode="HTML")
 
 @bot.message_handler(commands=["cutbalance", "cutbal", "removebal", "deductbal"])
 def admin_cut_balance(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
+    if m.from_user.id not in ALL_ADMINS:
         return
-
     parts = m.text.split()
     if len(parts) < 3:
         bot.reply_to(m, "Format: <code>/cutbalance <user_id> <amount></code>", parse_mode="HTML")
         return
-
     try:
-        target_uid = int(parts[1])
-        amount = float(parts[2])
+        target_uid, amount = int(parts[1]), float(parts[2])
     except ValueError:
-        bot.reply_to(m, "User ID aur Amount sahi numbers hone chahiye!")
         return
-
     if amount <= 0:
-        bot.reply_to(m, "Amount 0 se bada hona chahiye!")
         return
-
-    current_bal = get_bal(target_uid)
-    if current_bal <= 0:
-        bot.reply_to(m, f"⚠️ User <code>{target_uid}</code> ka balance pehle se hi <b>₹0.00</b> hai!", parse_mode="HTML")
-        return
-
     new_bal = update_bal(target_uid, -amount)
-    bot.reply_to(
-        m,
-        f"✂️ <b>Balance Deducted!</b>\n\n"
-        f"• User ID: <code>{target_uid}</code>\n"
-        f"• Deducted Amount: <b>₹{amount:.2f}</b>\n"
-        f"• Remaining Balance: <b>₹{new_bal:.2f}</b>",
-        parse_mode="HTML"
-    )
+    bot.reply_to(m, f"✂️ Deducted ₹{amount:.2f} from <code>{target_uid}</code>\nRemaining Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
 
-    try:
-        bot.send_message(
-            target_uid,
-            f"⚠️ <b>Wallet Update:</b>\n\nAdmin dwara aapke wallet se <b>₹{amount:.2f}</b> deduct kar liye gaye hain.\nNaya Balance: <b>₹{new_bal:.2f}</b>",
-            parse_mode="HTML"
-        )
-    except Exception:
-        pass
-
-@bot.message_handler(commands=["update", "botupdate"])
-def send_update_to_all(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
-        return
-
-    custom_text = m.text.replace("/update", "").replace("/botupdate", "").strip()
-
-    if not custom_text:
-        update_caption = (
-            "🚀 <b>WorldSIM Hub VIP Live!</b>\n\n"
-            "Naye saste WhatsApp rates aur VIP features live ho chuke hain:\n\n"
-            "✨ <b>Highlights:</b>\n"
-            "• WhatsApp OTP starting at ₹30!\n"
-            "• Per Refer ₹0.70 Instant Bonus\n"
-            f"• 24/7 Support: {SUPPORT_USERNAME}\n\n"
-            "👉 Neeche diye gaye button se start karein!"
-        )
-    else:
-        update_caption = f"🚀 <b>WorldSIM Hub Notice:</b>\n\n{custom_text}\n\n👉 Neeche diye gaye button se start karein:"
-
-    bot_username = get_bot_username()
-    mk = InlineKeyboardMarkup()
-    mk.add(InlineKeyboardButton("🚀 Open WorldSIM Hub VIP", url=f"https://t.me/{bot_username}?start=start"))
-
-    conn = None
-    all_users = []
-    try:
-        conn = get_db_conn()
-        with conn.cursor() as cur:
-            cur.execute("SELECT user_id FROM worldsim_users;")
-            all_users = cur.fetchall()
-    finally:
-        if conn:
-            release_db_conn(conn)
-
-    sent = 0
-    failed = 0
-    bot.reply_to(m, f"📢 Sabhi {len(all_users)} users ko update notice bhejna shuru kar rahe hain...")
-
-    for user in all_users:
-        u_id = user[0]
-        try:
-            bot.send_photo(u_id, photo=BROADCAST_IMAGE, caption=update_caption, reply_markup=mk, parse_mode="HTML")
-            sent += 1
-            time.sleep(0.05)
-        except Exception:
-            failed += 1
-
-    bot.send_message(m.chat.id, f"✅ <b>Update Sent!</b>\n\nDelivered: <b>{sent}</b> | Failed: <b>{failed}</b>", parse_mode="HTML")
-
-@bot.message_handler(commands=["broadcast", "sendall"])
+@bot.message_handler(commands=["broadcast", "sendall", "update", "botupdate"])
 def broadcast_message(m):
-    uid = m.from_user.id
-    if uid not in ALL_ADMINS:
+    if m.from_user.id not in ALL_ADMINS:
         return
-
-    msg_text = m.text.replace("/broadcast", "").replace("/sendall", "").strip()
-    if not msg_text:
-        bot.reply_to(m, "Format: <code>/broadcast Message</code>", parse_mode="HTML")
-        return
-
+    msg_text = m.text.split(" ", 1)[1].strip() if " " in m.text else "🚀 WorldSIM Hub VIP naye saste rates live ho chuke hain!"
     conn = None
     all_users = []
     try:
@@ -837,19 +720,15 @@ def broadcast_message(m):
     finally:
         if conn:
             release_db_conn(conn)
-
     sent = 0
-    failed = 0
     for user in all_users:
-        u_id = user[0]
         try:
-            bot.send_photo(u_id, photo=BROADCAST_IMAGE, caption=f"📢 <b>WorldSIM Hub Announcement:</b>\n\n{msg_text}", parse_mode="HTML")
+            bot.send_photo(user[0], photo=BROADCAST_IMAGE, caption=f"📢 <b>WorldSIM Hub VIP Notice:</b>\n\n{msg_text}", parse_mode="HTML")
             sent += 1
             time.sleep(0.05)
         except Exception:
-            failed += 1
-
-    bot.send_message(m.chat.id, f"✅ Broadcast Complete!\nDelivered: <b>{sent}</b> | Failed: <b>{failed}</b>", parse_mode="HTML")
+            pass
+    bot.send_message(m.chat.id, f"✅ Broadcast Complete! Delivered: <b>{sent}</b>", parse_mode="HTML")
 
 def build_vip_home_text(name, uid, bal, buys):
     return (
@@ -867,63 +746,25 @@ def start(m):
     uid = m.from_user.id
     name = m.from_user.first_name or "VIP User"
     parts = m.text.split()
-
     if len(parts) > 1 and parts[1].startswith("ref_"):
         try:
-            ref_id = int(parts[1].replace("ref_", ""))
-            set_referrer(uid, ref_id)
+            set_referrer(uid, int(parts[1].replace("ref_", "")))
         except Exception:
             pass
-
     if not is_user_member(uid):
         send_force_join_prompt(m.chat.id)
         return
-
     bal, _, buys = get_user(uid)
     process_referral_reward(uid)
-
     if len(parts) > 1 and parts[1] == "buy":
         text = "╭━━━✦ <b>VIP OTP SERVICES</b> ✦━━━╮\n\nApni pasandida service select karein:"
-        try:
-            bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
-        except Exception:
-            bot.reply_to(m, text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
+        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
         return
-
     text = build_vip_home_text(name, uid, bal, buys)
     try:
         bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=text, reply_markup=get_service_menu(), parse_mode="HTML")
     except Exception:
         bot.reply_to(m, text, reply_markup=get_service_menu(), parse_mode="HTML")
-@bot.message_handler(commands=["support", "help"])
-def support_cmd(m):
-    mk = InlineKeyboardMarkup()
-    mk.add(InlineKeyboardButton("💬 Open VIP Support Chat", url=SUPPORT_LINK))
-    try:
-        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=f"🛠️ <b>WorldSIM Hub 24/7 VIP Helpline:</b> {SUPPORT_USERNAME}", reply_markup=mk, parse_mode="HTML")
-    except Exception:
-        bot.reply_to(m, f"24/7 Helpline: {SUPPORT_USERNAME}", reply_markup=mk)
-
-@bot.message_handler(commands=["balance"])
-def balance(m):
-    if not is_user_member(m.from_user.id):
-        send_force_join_prompt(m.chat.id)
-        return
-    bal = get_bal(m.from_user.id)
-    try:
-        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=f"💰 <b>WorldSIM Hub VIP Wallet:</b> ₹{bal:.2f}", parse_mode="HTML")
-    except Exception:
-        bot.reply_to(m, f"Wallet Balance: ₹{bal:.2f}")
-
-@bot.message_handler(commands=["deposit"])
-def dep(m):
-    if not is_user_member(m.from_user.id):
-        send_force_join_prompt(m.chat.id)
-        return
-    try:
-        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption="💳 <b>Deposit Amount select karein (Minimum ₹20):</b>", reply_markup=get_deposit_menu(), parse_mode="HTML")
-    except Exception:
-        bot.reply_to(m, "Deposit amount select karein (Minimum ₹20):", reply_markup=get_deposit_menu(), parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: not m.text.startswith("/"))
 def text_flow(m):
@@ -931,44 +772,28 @@ def text_flow(m):
     if not is_user_member(uid):
         send_force_join_prompt(m.chat.id)
         return
-
     raw = m.text.strip()
-
     if uid in user_search_state:
-        service = user_search_state[uid]
-        del user_search_state[uid]
-        query = raw.lower()
-        country_list = CATALOG.get(service, [])
-        matches = [c for c in country_list if query in c["name"].lower()]
-
+        service = user_search_state.pop(uid)
+        matches = [c for c in CATALOG.get(service, []) if raw.lower() in c["name"].lower()]
         if not matches:
-            bot.reply_to(m, f"❌ '<b>{raw}</b>' naam ka koi country nahi mila!\n\nMain menu se list dekhein.", reply_markup=get_service_menu(), parse_mode="HTML")
+            bot.reply_to(m, f"❌ '<b>{raw}</b>' naam ka koi country nahi mila!", reply_markup=get_service_menu(), parse_mode="HTML")
             return
-
         mk = InlineKeyboardMarkup(row_width=2)
-        btns = []
-        for c in matches:
-            cid = c["id"]
-            price = c["price"]
-            btn_text = f"{c['flag']} {c['name']} • ₹{price:g}"
-            btns.append(InlineKeyboardButton(text=btn_text, callback_data=f"buy_{service}_{cid}_{price}"))
-
+        btns = [InlineKeyboardButton(f"{c['flag']} {c['name']} • ₹{c['price']:g}", callback_data=f"buy_{service}_{c['id']}_{c['price']}") for c in matches]
         for i in range(0, len(btns), 2):
             mk.row(*btns[i:i+2])
         mk.add(InlineKeyboardButton("🔙 Back to Services", callback_data="open_browse_services"))
-
         bot.reply_to(m, f"🔍 <b>Search Results for '{raw}':</b>", reply_markup=mk, parse_mode="HTML")
         return
-
     if raw.isdigit() and len(raw) <= 5:
         amt = float(raw)
         if amt < 20:
-            bot.reply_to(m, "⚠️ <b>Minimum deposit ₹20 hai!</b>\nKripya ₹20 ya usse jyada type karein.", parse_mode="HTML")
+            bot.reply_to(m, "⚠️ <b>Minimum deposit ₹20 hai!</b>", parse_mode="HTML")
             return
         send_payment_qr(m.chat.id, uid, amt, upi_choice=1)
         return
-
-    bot.reply_to(m, "⚠️ <b>Kripya Payment ka Screenshot send karein!</b>\n\nText UTR accept nahi hota, direct photo bhejein.", parse_mode="HTML")
+    bot.reply_to(m, "⚠️ <b>Kripya Payment ka Screenshot send karein!</b>", parse_mode="HTML")
 
 @bot.message_handler(content_types=['photo'])
 def photo_flow(m):
@@ -977,8 +802,18 @@ def photo_flow(m):
         send_force_join_prompt(m.chat.id)
         return
 
-    amt_data = user_dep_cache.get(uid, {"amt": 20.0, "upi": 1})
-    amt = amt_data["amt"]
+    # SINGLE SCREENSHOT ANTI-SPAM LOCK
+    if has_pending_deposit(uid):
+        bot.reply_to(
+            m,
+            "⏳ <b>Aapka ek payment screenshot pehle se pending hai!</b>\n\n"
+            "Ek baar me sirf <b>1 hi screenshot</b> bheja ja sakta hai. Admin approval ke baad hi dobara request bhejein.",
+            parse_mode="HTML"
+        )
+        return
+
+    set_pending_deposit(uid, True)
+    amt = user_dep_cache.get(uid, {"amt": 20.0})["amt"]
     cap = m.caption if m.caption else "No Caption"
     name = m.from_user.first_name or "User"
     user_tag = format_user_tag(uid, m.from_user.username)
@@ -989,19 +824,17 @@ def photo_flow(m):
         InlineKeyboardButton("❌ Reject", callback_data=f"rej_{uid}")
     )
     admin_cap = (
-        f"<b>Naya VIP Deposit Screenshot!</b>\n"
+        f"<b>Naya VIP Deposit Screenshot (Single Request)!</b>\n"
         f"User: <b>{name}</b> ({user_tag} | <code>{uid}</code>)\n"
         f"Amount: <b>₹{amt:.2f}</b>\n"
         f"Caption: <code>{cap}</code>"
     )
-
     for admin in ALL_ADMINS:
         try:
             bot.send_photo(admin, m.photo[-1].file_id, caption=admin_cap, reply_markup=mk, parse_mode="HTML")
         except Exception:
             pass
-
-    bot.reply_to(m, f"✅ Screenshot receive ho gaya! Admin approval ke baad balance add ho jayega.\nSupport: {SUPPORT_USERNAME}", parse_mode="HTML")
+    bot.reply_to(m, f"✅ <b>Screenshot submit ho gaya!</b>\n\nAb admin ke approve/reject karne tak wait karein (dobara photo send karne ki zaroorat nahi hai).\nSupport: {SUPPORT_USERNAME}", parse_mode="HTML")
 
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
@@ -1010,25 +843,22 @@ def callbacks(call):
 
     if call.data == "check_join":
         unjoined = get_user_unjoined_channels(uid)
-        if len(unjoined) == 0:
+        if not unjoined:
             try:
                 bot.delete_message(call.message.chat.id, call.message.message_id)
             except Exception:
                 pass
             bal, _, buys = get_user(uid)
             process_referral_reward(uid)
-            name = call.from_user.first_name or "VIP User"
-            text = "✅ <b>VIP Access Unlocked!</b>\n\n" + build_vip_home_text(name, uid, bal, buys)
+            text = "✅ <b>VIP Access Unlocked!</b>\n\n" + build_vip_home_text(call.from_user.first_name or "VIP User", uid, bal, buys)
             bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=text, reply_markup=get_service_menu(), parse_mode="HTML")
         else:
-            bot.answer_callback_query(call.id, f"⚠️ Abhi {len(unjoined)} channel(s) baaki hain! Dono join karein.", show_alert=True)
+            bot.answer_callback_query(call.id, f"⚠️ Abhi {len(unjoined)} channel(s) baaki hain!", show_alert=True)
         return
 
     if call.data == "menu_profile":
         bal, _, buys = get_user(uid)
-        bu = get_bot_username()
-        ref_link = f"https://t.me/{bu}?start=ref_{uid}"
-
+        ref_link = f"https://t.me/{get_bot_username()}?start=ref_{uid}"
         conn = None
         refs = 0
         try:
@@ -1039,119 +869,68 @@ def callbacks(call):
         finally:
             if conn:
                 release_db_conn(conn)
-
-        total_ref_earned = round(refs * PER_REFER_REWARD, 2)
         prof_text = (
             f"╭━━━✦ <b>VIP PROFILE & REFERRALS</b> ✦━━━╮\n\n"
             f"🆔 <b>User ID:</b> <code>{uid}</code>\n"
-            f"👤 <b>Username:</b> @{uname if uname else 'Not Set'}\n"
             f"💰 <b>Wallet Balance:</b> ₹{bal:.2f}\n"
             f"📦 <b>Accounts Bought:</b> {buys}\n"
             f"👥 <b>Total Referrals:</b> {refs} Users\n"
-            f"🎁 <b>Referral Earnings:</b> ₹{total_ref_earned:.2f} (₹{PER_REFER_REWARD:.2f}/refer)\n\n"
-            f"🔗 <b>Your Personal Referral Link:</b>\n<code>{ref_link}</code>\n\n"
-            f"<i>Har dost ke join karte hi ₹{PER_REFER_REWARD:.2f} seedha aapke wallet me add honge!</i>"
+            f"🎁 <b>Referral Earnings:</b> ₹{round(refs * PER_REFER_REWARD, 2):.2f} (₹{PER_REFER_REWARD:.2f}/refer)\n\n"
+            f"🔗 <b>Your Referral Link:</b>\n<code>{ref_link}</code>"
         )
         mk = InlineKeyboardMarkup()
         mk.add(InlineKeyboardButton("💳 Add Balance", callback_data="menu_dep"))
         mk.add(InlineKeyboardButton("🏠 Back to VIP Home", callback_data="back_main"))
-        try:
-            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=prof_text, reply_markup=mk, parse_mode="HTML")
-        except Exception:
-            bot.send_message(call.message.chat.id, prof_text, reply_markup=mk, parse_mode="HTML")
+        bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=prof_text, reply_markup=mk, parse_mode="HTML")
         bot.answer_callback_query(call.id)
         return
 
     if call.data == "menu_orders":
         last_ord = user_recent_orders.get(uid)
-        if not last_ord:
-            ord_text = "📦 <b>Aapka koi active order nahi hai.</b>\n\nNaye OTP number lene ke liye 'BROWSE VIP SERVICES' par tap karein."
-        else:
-            ord_text = (
-                f"╭━━━✦ <b>RECENT VIP ORDER</b> ✦━━━╮\n\n"
-                f"• <b>Service:</b> {last_ord.get('service')}\n"
-                f"• <b>Country:</b> {last_ord.get('country')}\n"
-                f"• <b>Number:</b> <code>+{last_ord.get('phone')}</code>\n"
-                f"• <b>Status:</b> {last_ord.get('status')}"
-            )
+        ord_text = "📦 <b>Aapka koi active order nahi hai.</b>" if not last_ord else f"╭━━━✦ <b>RECENT VIP ORDER</b> ✦━━━╮\n\n• <b>Service:</b> {last_ord.get('service')}\n• <b>Country:</b> {last_ord.get('country')}\n• <b>Number:</b> <code>+{last_ord.get('phone')}</code>\n• <b>Status:</b> {last_ord.get('status')}"
         mk = InlineKeyboardMarkup()
         mk.add(InlineKeyboardButton("🛒 Browse VIP Services", callback_data="open_browse_services"))
         mk.add(InlineKeyboardButton("🏠 Back to VIP Home", callback_data="back_main"))
-        try:
-            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=ord_text, reply_markup=mk, parse_mode="HTML")
-        except Exception:
-            bot.send_message(call.message.chat.id, ord_text, reply_markup=mk, parse_mode="HTML")
+        bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=ord_text, reply_markup=mk, parse_mode="HTML")
         bot.answer_callback_query(call.id)
         return
 
     if call.data == "open_browse_services":
         text = "╭━━━✦ <b>VIP OTP SERVICES</b> ✦━━━╮\n\nApni pasandida service select karein:"
         if call.message.photo:
-            try:
-                bot.edit_message_media(
-                    media=InputMediaPhoto(MAIN_MENU_IMAGE, caption=text, parse_mode="HTML"),
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    reply_markup=get_service_picker_menu()
-                )
-            except Exception:
-                bot.edit_message_caption(caption=text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_picker_menu(), parse_mode="HTML")
+            bot.edit_message_media(media=InputMediaPhoto(MAIN_MENU_IMAGE, caption=text, parse_mode="HTML"), chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_picker_menu())
         else:
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
         bot.answer_callback_query(call.id)
         return
 
     if call.data.startswith("search_country_"):
-        service = call.data.replace("search_country_", "")
-        user_search_state[uid] = service
+        user_search_state[uid] = call.data.replace("search_country_", "")
         bot.answer_callback_query(call.id)
-        bot.send_message(
-            call.message.chat.id,
-            f"🔍 <b>Country Search</b>\n\nCountry ka naam type karein (Jaise: <code>India</code>, <code>Chile</code>, <code>Canada</code>):",
-            parse_mode="HTML"
-        )
+        bot.send_message(call.message.chat.id, "🔍 <b>Country ka naam type karein:</b>", parse_mode="HTML")
         return
 
     if call.data.startswith("rate_"):
         parts = call.data.split("_")
         stars = int(parts[1])
         s_name = parts[2] if len(parts) > 2 else "OTP Service"
-
-        bot.answer_callback_query(call.id, f"Aapne {stars} Star diya! Dhanyawad.")
-        thank_you_text = f"💖 <b>Feedback ke liye shukriya!</b>\n\nAapne {'⭐' * stars} rating di hai."
-        try:
-            bot.edit_message_text(text=thank_you_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
-        except Exception:
-            bot.send_message(call.message.chat.id, thank_you_text, parse_mode="HTML")
-
+        bot.answer_callback_query(call.id, f"Aapne {stars} Star diya!")
+        bot.edit_message_text(text=f"💖 <b>Feedback ke liye shukriya!</b> ({'⭐' * stars})", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         threading.Thread(target=send_feedback_receipt_to_channel, args=(uid, stars, s_name, uname)).start()
         return
 
     if call.data.startswith("cancel_order_"):
         parts = call.data.split("_")
-        act_id = parts[2]
-        refund_price = float(parts[3])
-
+        act_id, refund_price = parts[2], float(parts[3])
         if act_id in active_orders:
             active_orders[act_id]["status"] = "cancelled_by_user"
-
-        cancel_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=setStatus&status=8&id={act_id}"
         try:
-            requests.get(cancel_url, timeout=5)
+            requests.get(f"{BASE_URL}?api_key={SASTA_API_KEY}&action=setStatus&status=8&id={act_id}", timeout=5)
         except Exception:
             pass
-
         new_bal = update_bal(uid, refund_price)
-        if uid in user_recent_orders:
-            user_recent_orders[uid]["status"] = "Cancelled & Refunded"
-
         bot.answer_callback_query(call.id, "Order cancelled! Amount refunded.")
-        bot.edit_message_text(
-            f"❌ <b>Order Cancelled!</b>\n\n₹{refund_price:.2f} aapke wallet me refund kar diye gaye hain.\nCurrent Balance: <b>₹{new_bal:.2f}</b>",
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            parse_mode="HTML"
-        )
+        bot.edit_message_text(f"❌ <b>Order Cancelled!</b>\n\n₹{refund_price:.2f} refund ho gaye hain.\nBalance: <b>₹{new_bal:.2f}</b>", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         return
 
     if not is_user_member(uid) and uid not in ALL_ADMINS:
@@ -1165,70 +944,43 @@ def callbacks(call):
     elif call.data == "back_main":
         text = build_vip_home_text(call.from_user.first_name or "VIP User", uid, bal, buys)
         if call.message.photo:
-            try:
-                bot.edit_message_media(
-                    media=InputMediaPhoto(MAIN_MENU_IMAGE, caption=text, parse_mode="HTML"),
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    reply_markup=get_service_menu()
-                )
-            except Exception:
-                bot.edit_message_caption(caption=text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_menu(), parse_mode="HTML")
+            bot.edit_message_media(media=InputMediaPhoto(MAIN_MENU_IMAGE, caption=text, parse_mode="HTML"), chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_service_menu())
         else:
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=get_service_menu(), parse_mode="HTML")
-
     elif call.data.startswith("page_"):
         parts = call.data.split("_")
-        service = parts[1]
-        page = int(parts[2])
+        service, page = parts[1], int(parts[2])
         s_name = SERVICES.get(service, {}).get("name", "Service")
-        text = f"✦ <b>{s_name} VIP Servers</b> ✦\n\nNeeche se country choose karein ya search karein:"
-        service_banner = SERVICE_IMAGES.get(service, MAIN_MENU_IMAGE)
-
+        text = f"✦ <b>{s_name} VIP Servers</b> ✦\n\nNeeche se country choose karein:"
         if call.message.photo:
-            try:
-                bot.edit_message_media(
-                    media=InputMediaPhoto(service_banner, caption=text, parse_mode="HTML"),
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    reply_markup=get_countries_paged_menu(service, page)
-                )
-            except Exception:
-                bot.edit_message_caption(caption=text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_countries_paged_menu(service, page), parse_mode="HTML")
+            bot.edit_message_media(media=InputMediaPhoto(SERVICE_IMAGES.get(service, MAIN_MENU_IMAGE), caption=text, parse_mode="HTML"), chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=get_countries_paged_menu(service, page))
         else:
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=get_countries_paged_menu(service, page), parse_mode="HTML")
-
     elif call.data == "menu_dep":
-        try:
-            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption="💳 <b>Deposit Amount select karein ya direct type karein (Minimum ₹20):</b>", reply_markup=get_deposit_menu(), parse_mode="HTML")
-        except Exception:
-            bot.send_message(call.message.chat.id, "Deposit Amount select karein ya direct type karein (Minimum ₹20):", reply_markup=get_deposit_menu())
+        if has_pending_deposit(uid):
+            bot.answer_callback_query(call.id, "⏳ Aapka ek screenshot pehle se pending hai! Approval ka wait karein.", show_alert=True)
+            return
+        bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption="💳 <b>Deposit Amount select karein ya direct type karein (Minimum ₹20):</b>", reply_markup=get_deposit_menu(), parse_mode="HTML")
         bot.answer_callback_query(call.id)
     elif call.data.startswith("setdep_"):
-        amt = float(call.data.split("_")[1])
-        send_payment_qr(call.message.chat.id, uid, amt, upi_choice=1)
+        send_payment_qr(call.message.chat.id, uid, float(call.data.split("_")[1]), upi_choice=1)
         bot.answer_callback_query(call.id)
     elif call.data.startswith("toggle_upi_"):
         parts = call.data.split("_")
-        target_upi = int(parts[2])
-        amt = float(parts[3])
-        send_payment_qr(call.message.chat.id, uid, amt, upi_choice=target_upi)
-        bot.answer_callback_query(call.id, text=f"Switched to UPI {target_upi}")
+        send_payment_qr(call.message.chat.id, uid, float(parts[3]), upi_choice=int(parts[2]))
+        bot.answer_callback_query(call.id)
     elif call.data.startswith("app_"):
         if uid not in ALL_ADMINS:
             return
         parts = call.data.split("_")
-        target = int(parts[1])
-        amt = float(parts[2])
-
+        target, amt = int(parts[1]), float(parts[2])
         nb = update_bal(target, amt)
+        set_pending_deposit(target, False)
         msg = f"✅ <b>Approved by Admin!</b>\nUser: <code>{target}</code> | Added: ₹{amt:.2f} | New Bal: ₹{nb:.2f}"
-
         if call.message.photo:
             bot.edit_message_caption(caption=msg, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         else:
             bot.edit_message_text(text=msg, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
-
         try:
             bot.send_message(target, f"🎉 <b>Payment Approved!</b>\nWallet me ₹{amt:.2f} add ho gaye hain.\nCurrent Balance: ₹{nb:.2f}", parse_mode="HTML")
         except Exception:
@@ -1237,80 +989,51 @@ def callbacks(call):
         if uid not in ALL_ADMINS:
             return
         tu = int(call.data.split("_")[1])
+        set_pending_deposit(tu, False)
         m = f"❌ Rejected by Admin! User: <code>{tu}</code>"
         if call.message.photo:
             bot.edit_message_caption(caption=m, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         else:
             bot.edit_message_text(text=m, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         try:
-            bot.send_message(tu, "Aapka deposit request reject kar diya gaya hai.")
+            bot.send_message(tu, "❌ Aapka deposit request reject kar diya gaya hai. Ab aap sahi screenshot dobara bhej sakte hain.")
         except Exception:
             pass
     elif call.data.startswith("buy_"):
         parts = call.data.split("_")
-        service = parts[1]
-        code = parts[2]
-        p = float(parts[3])
+        service, code, p = parts[1], parts[2], float(parts[3])
         s_name = SERVICES.get(service, {}).get("name", service.upper())
-
         country_data = next((c for c in CATALOG.get(service, []) if c["id"] == code), {"name": "Country", "flag": "🌐"})
-
-        bal = get_bal(uid)
-        if bal < p:
-            bot.answer_callback_query(call.id, f"Balance kam hai! Price: ₹{p}, Bal: ₹{bal:.2f}", show_alert=True)
+        if get_bal(uid) < p:
+            bot.answer_callback_query(call.id, f"Balance kam hai! Price: ₹{p}, Bal: ₹{get_bal(uid):.2f}", show_alert=True)
             return
-
         bot.answer_callback_query(call.id, f"Ordering {s_name}...")
-        wait_msg = bot.send_message(call.message.chat.id, f"🔄 {country_data.get('flag')} {country_data.get('name')} {s_name} VIP number manga rahe hain, kripya wait karein...")
-
-        req_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getNumber&service={service}&country={code}&format=json"
+        wait_msg = bot.send_message(call.message.chat.id, f"🔄 {country_data.get('flag')} {country_data.get('name')} {s_name} VIP number manga rahe hain...")
         try:
-            r = requests.get(req_url, timeout=10)
-            res = r.json()
+            res = requests.get(f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getNumber&service={service}&country={code}&format=json", timeout=10).json()
         except Exception:
-            bot.edit_message_text("Connection error! Thodi der baad try karein.", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
+            bot.edit_message_text("Connection error!", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
             return
-
         activation_id = res.get("activation_id") or res.get("id")
         phone = res.get("phone") or res.get("number")
-
         if not phone or not activation_id:
-            err = res.get("error") or res.get("msg") or "Is country me filhal stock available nahi hai."
-            bot.edit_message_text(f"❌ Failed: {err}", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
+            bot.edit_message_text(f"❌ Failed: {res.get('error') or res.get('msg') or 'Stock unavailable'}", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
             return
-
-        update_bal(uid, -p)
+           update_bal(uid, -p)
         increment_purchase_count(uid)
-
-        user_recent_orders[uid] = {
-            "service": s_name,
-            "country": f"{country_data.get('flag')} {country_data.get('name')}",
-            "phone": phone,
-            "status": "Waiting for OTP"
-        }
-
+        user_recent_orders[uid] = {"service": s_name, "country": f"{country_data.get('flag')} {country_data.get('name')}", "phone": phone, "status": "Waiting for OTP"}
         cancel_mk = InlineKeyboardMarkup()
         cancel_mk.add(InlineKeyboardButton("❌ Cancel Order & Refund", callback_data=f"cancel_order_{activation_id}_{p}"))
-
         order_text = (
             f"╭━━━✦ <b>{s_name.upper()} VIP NUMBER</b> ✦━━━╮\n\n"
             f"📱 <b>Number:</b> <code>+{phone}</code>\n"
             f"🌍 <b>Country:</b> {country_data.get('flag')} <b>{country_data.get('name')}</b>\n"
             f"💸 <b>Deducted:</b> ₹{p:.2f}\n\n"
-            f"⏳ <b>Waiting for OTP... (Timer: 20 Minutes)</b>\n"
-            f"<i>Agar 20 minute me OTP nahi aata toh paisa automatically refund ho jayega.</i>"
+            f"⏳ <b>Waiting for OTP... (Timer: 20 Minutes)</b>"
         )
         status_msg = bot.send_message(call.message.chat.id, order_text, reply_markup=cancel_mk, parse_mode="HTML")
-
-        threading.Thread(
-            target=send_sale_receipt,
-            args=(s_name, country_data.get("name"), country_data.get("flag"), phone, activation_id, p, uid, uname)
-        ).start()
-
-        threading.Thread(
-            target=poll_otp_20_minutes,
-            args=(call.message.chat.id, uid, activation_id, p, s_name, status_msg.message_id)
-        ).start()
+        threading.Thread(target=send_sale_receipt, args=(s_name, country_data.get("name"), country_data.get("flag"), phone, activation_id, p, uid, uname)).start()
+        threading.Thread(target=poll_otp_20_minutes, args=(call.message.chat.id, uid, activation_id, p, s_name, status_msg.message_id)).start()
 
 print(">> WORLDSIM HUB VIP BOT RUNNING LIVE <<")
 while True:
@@ -1319,4 +1042,4 @@ while True:
     except Exception as e:
         print(f"Connection retry error: {e}")
         time.sleep(3)
-            
+        
