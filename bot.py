@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2 import pool
 
 # ================= CONFIGURATION =================
-BOT_TOKEN = "9109714291:AAGpK80XtBacAcm8VRnThBBR4t7CxxK6lKM"
+BOT_TOKEN = "9109714291:AAFQny4eo62NZQy7TAnxXJQf3dG420gw2O4"
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 
