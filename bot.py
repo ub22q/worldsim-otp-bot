@@ -1050,7 +1050,7 @@ def callbacks(call):
             bot.edit_message_text(f"❌ Failed: {res.get('error') or res.get('msg') or 'Stock unavailable'}", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
             return
         update_bal(uid, -p)
-              increment_purchase_count(uid)
+        increment_purchase_count(uid)
         user_recent_orders[uid] = {"service": s_name, "country": f"{country_data.get('flag')} {country_data.get('name')}", "phone": phone, "status": "Waiting for OTP"}
         cancel_mk = InlineKeyboardMarkup()
         cancel_mk.add(InlineKeyboardButton("❌ Cancel Order & Refund", callback_data=f"cancel_order_{activation_id}_{p}"))
