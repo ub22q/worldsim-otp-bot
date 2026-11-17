@@ -19,18 +19,17 @@ DATABASE_URL = "postgresql://neondb_owner:npg_Hy4LqEYdOvk7@ep-weathered-river-bd
 
 MAIN_ADMIN = 8539777823           # @ub2_q
 SECOND_ADMIN = 9013970075         # @Worldsim_hub
-
 ALL_ADMINS = [MAIN_ADMIN, SECOND_ADMIN]
 
 UPI_ID_1 = "alone..hacker@ybl"    # Primary UPI
 UPI_ID_2 = "noname0011@axl"       # Backup UPI
-MERCHANT_NAME = "WorldSIM Store"
+MERCHANT_NAME = "WorldSIM Hub"
 
 SUPPORT_USERNAME = "@Worldsim_hub"
 SUPPORT_LINK = "https://t.me/Worldsim_hub"
 
 RECEIPT_CHANNEL_ID = -1004497033717
-UPDATE_CHANNEL_ID  = -1003965474093
+UPDATE_CHANNEL_ID  = -1004336033917
 
 PROOFS_CHANNEL_LINK   = "https://t.me/+3gxG5EZyJ2UzY2Rl"
 OFFICIAL_CHANNEL_LINK = "https://t.me/smmupdatess"
@@ -43,21 +42,21 @@ CHANNELS = [
     },
     {
         "id": UPDATE_CHANNEL_ID,
-        "name": "📢 Bot Updates Channel",
+        "name": "📢 WorldSIM Updates Channel",
         "link": OFFICIAL_CHANNEL_LINK
     }
 ]
 
-FORCE_JOIN_IMAGE = "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&auto=format&fit=crop&q=80"
-MAIN_MENU_IMAGE  = "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&auto=format&fit=crop&q=80"
-BROADCAST_IMAGE  = "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&auto=format&fit=crop&q=80"
+FORCE_JOIN_IMAGE = "https://placehold.co/1200x500/0f172a/38bdf8.png?text=WorldSIM+Hub%0AVerify+Channels+To+Continue&font=montserrat"
+MAIN_MENU_IMAGE  = "https://placehold.co/1200x500/0f172a/22c55e.png?text=WorldSIM+Hub%0AInstant+OTP+%26+Virtual+Numbers&font=montserrat"
+BROADCAST_IMAGE  = "https://placehold.co/1200x500/1e1b4b/a855f7.png?text=WorldSIM+Hub%0AOfficial+Store+Announcement&font=montserrat"
 
 SERVICE_IMAGES = {
-    "wa": "https://images.unsplash.com/photo-1614680376593-902f749f7ffc?w=800&auto=format&fit=crop&q=80",
-    "tg": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
-    "go": "https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=800&auto=format&fit=crop&q=80",
-    "ig": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=80",
-    "fb": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800&auto=format&fit=crop&q=80"
+    "wa": "https://placehold.co/1200x500/052e16/4ade80.png?text=WorldSIM+Hub%0AWhatsApp+Instant+OTP&font=montserrat",
+    "tg": "https://placehold.co/1200x500/082f49/38bdf8.png?text=WorldSIM+Hub%0ATelegram+Instant+OTP&font=montserrat",
+    "go": "https://placehold.co/1200x500/450a0a/f87171.png?text=WorldSIM+Hub%0AGoogle+%2F+Gmail+OTP&font=montserrat",
+    "ig": "https://placehold.co/1200x500/4a044e/e879f9.png?text=WorldSIM+Hub%0AInstagram+Instant+OTP&font=montserrat",
+    "fb": "https://placehold.co/1200x500/172554/60a5fa.png?text=WorldSIM+Hub%0AFacebook+Instant+OTP&font=montserrat"
 }
 
 REFER_COMMISSION_PERCENT = 5.0
@@ -128,7 +127,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"WorldSIM OTP Store Running 24/7!")
+        self.wfile.write(b"WorldSIM Hub Bot Running 24/7!")
 
     def log_message(self, format, *args):
         return
@@ -154,7 +153,7 @@ def get_bot_username():
             BOT_USERNAME_CACHE = "WorldsimOtp_bot"
     return BOT_USERNAME_CACHE
 
-# ================= DATABASE =================
+# ================= FRESH DATABASE (0.0 BALANCE START) =================
 db_pool = None
 
 def get_pool():
@@ -176,7 +175,7 @@ def init_db():
         conn = get_db_conn()
         with conn.cursor() as cur:
             cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS worldsim_users (
                 user_id BIGINT PRIMARY KEY,
                 balance REAL DEFAULT 0.0,
                 referred_by BIGINT DEFAULT 0
@@ -199,11 +198,11 @@ def get_user(uid):
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT balance, referred_by FROM users WHERE user_id = %s;", (uid,))
+            cur.execute("SELECT balance, referred_by FROM worldsim_users WHERE user_id = %s;", (uid,))
             r = cur.fetchone()
             if r:
                 return float(r[0]), int(r[1])
-            cur.execute("INSERT INTO users (user_id, balance, referred_by) VALUES (%s, 0.0, 0) ON CONFLICT DO NOTHING;", (uid,))
+            cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by) VALUES (%s, 0.0, 0) ON CONFLICT DO NOTHING;", (uid,))
         conn.commit()
         return 0.0, 0
     except Exception as e:
@@ -225,10 +224,10 @@ def update_bal(uid, amt):
         conn = get_db_conn()
         with conn.cursor() as cur:
             cur.execute("""
-            INSERT INTO users (user_id, balance, referred_by) 
+            INSERT INTO worldsim_users (user_id, balance, referred_by) 
             VALUES (%s, GREATEST(0.0, %s), 0)
             ON CONFLICT (user_id) 
-            DO UPDATE SET balance = GREATEST(0.0, users.balance + %s)
+            DO UPDATE SET balance = GREATEST(0.0, worldsim_users.balance + %s)
             RETURNING balance;
             """, (uid, amt, amt))
             new_bal = cur.fetchone()[0]
@@ -248,12 +247,12 @@ def set_referrer(uid, ref_id):
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT referred_by FROM users WHERE user_id = %s;", (uid,))
+            cur.execute("SELECT referred_by FROM worldsim_users WHERE user_id = %s;", (uid,))
             r = cur.fetchone()
             if not r:
-                cur.execute("INSERT INTO users (user_id, balance, referred_by) VALUES (%s, 0.0, %s);", (uid, ref_id))
+                cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by) VALUES (%s, 0.0, %s);", (uid, ref_id))
             elif r[0] == 0 and uid != ref_id:
-                cur.execute("UPDATE users SET referred_by = %s WHERE user_id = %s;", (ref_id, uid))
+                cur.execute("UPDATE worldsim_users SET referred_by = %s WHERE user_id = %s;", (ref_id, uid))
         conn.commit()
     except Exception as e:
         print(f"set_referrer Error: {e}")
@@ -288,9 +287,9 @@ def get_force_join_menu():
 def send_force_join_prompt(chat_id):
     caption = (
         "🔒 <b>Mandatory Verification Required</b>\n\n"
-        "Store ke features aur OTP numbers purchase karne ke liye dono channels join karein:\n\n"
+        "<b>WorldSIM Hub</b> ke features aur OTP numbers purchase karne ke liye dono channels join karein:\n\n"
         "1️⃣ <b>Official Receipts & Proofs</b>\n"
-        "2️⃣ <b>Bot Updates Channel</b>\n\n"
+        "2️⃣ <b>WorldSIM Updates Channel</b>\n\n"
         "👇 <b>Dono join karke 'Verify & Continue' dabayein:</b>"
     )
     try:
@@ -299,7 +298,7 @@ def send_force_join_prompt(chat_id):
         bot.send_message(chat_id, caption, reply_markup=get_force_join_menu(), parse_mode="HTML")
 
 def generate_dynamic_qr_url(upi_id, amount):
-    note = f"Store_{int(time.time())}"
+    note = f"WorldSIM_{int(time.time())}"
     upi_string = f"upi://pay?pa={upi_id}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={note}"
     return f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(upi_string)}"
 
@@ -320,7 +319,7 @@ def send_sale_receipt(service_name, country_name, country_flag, phone_num, activ
 
     receipt = (
         "+--------------------------------------+\n"
-        "|     WORLDSIM  •  SALE RECEIPT        |\n"
+        "|     WORLDSIM HUB  •  SALE RECEIPT    |\n"
         "+--------------------------------------+\n"
         "|                                      |\n"
         f"|  Status     : PURCHASED OK           |\n"
@@ -351,7 +350,7 @@ def send_feedback_receipt_to_channel(buyer_id, stars, service_name, buyer_userna
 
     feedback_msg = (
         "+--------------------------------------+\n"
-        "|      WORLDSIM  •  USER FEEDBACK      |\n"
+        "|    WORLDSIM HUB  •  USER FEEDBACK    |\n"
         "+--------------------------------------+\n"
         "|                                      |\n"
         f"|  Customer   : {user_tag:<23}|\n"
@@ -478,7 +477,7 @@ def send_payment_qr(chat_id, uid, amount, upi_choice=1):
     qr_url = generate_dynamic_qr_url(chosen_upi, amount)
 
     caption = (
-        f"💳 <b>Deposit Amount: Rs {amount:.2f}</b>\n\n"
+        f"💳 <b>WorldSIM Hub • Deposit Rs {amount:.2f}</b>\n\n"
         f"Is QR ko scan karke payment karein!\n\n"
         f"UPI ID: <code>{chosen_upi}</code>\n\n"
         f"Support: {SUPPORT_USERNAME}\n\n"
@@ -617,7 +616,7 @@ def admin_check_user_balance(m):
 
     user_bal, ref_by = get_user(target_uid)
     info_text = (
-        f"👤 <b>User Wallet Details:</b>\n\n"
+        f"👤 <b>WorldSIM Hub User Details:</b>\n\n"
         f"• <b>User ID:</b> <code>{target_uid}</code>\n"
         f"• <b>Current Balance:</b> <b>Rs {user_bal:.2f}</b>\n"
         f"• <b>Referred By:</b> <code>{ref_by if ref_by != 0 else 'None'}</code>"
@@ -680,7 +679,7 @@ def send_update_to_all(m):
 
     if not custom_text:
         update_caption = (
-            "🚀 <b>WorldSIM Store Live!</b>\n\n"
+            "🚀 <b>WorldSIM Hub Live!</b>\n\n"
             "Naye fast OTP servers aur updated features live ho chuke hain:\n\n"
             "✨ <b>Features:</b>\n"
             "• Direct WhatsApp & Telegram OTPs\n"
@@ -689,18 +688,18 @@ def send_update_to_all(m):
             "👉 Neeche diye gaye button se start karein!"
         )
     else:
-        update_caption = f"🚀 <b>Store Notice:</b>\n\n{custom_text}\n\n👉 Neeche diye gaye button se start karein:"
+        update_caption = f"🚀 <b>WorldSIM Hub Notice:</b>\n\n{custom_text}\n\n👉 Neeche diye gaye button se start karein:"
 
     bot_username = get_bot_username()
     mk = InlineKeyboardMarkup()
-    mk.add(InlineKeyboardButton("🚀 Open Store", url=f"https://t.me/{bot_username}?start=start"))
+    mk.add(InlineKeyboardButton("🚀 Open WorldSIM Hub", url=f"https://t.me/{bot_username}?start=start"))
 
     conn = None
     all_users = []
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id FROM users;")
+            cur.execute("SELECT user_id FROM worldsim_users;")
             all_users = cur.fetchall()
     finally:
         if conn:
@@ -737,7 +736,7 @@ def broadcast_message(m):
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT user_id FROM users;")
+            cur.execute("SELECT user_id FROM worldsim_users;")
             all_users = cur.fetchall()
     finally:
         if conn:
@@ -748,15 +747,14 @@ def broadcast_message(m):
     for user in all_users:
         u_id = user[0]
         try:
-            bot.send_message(u_id, f"📢 <b>Store Announcement:</b>\n\n{msg_text}", parse_mode="HTML")
+            bot.send_photo(u_id, photo=BROADCAST_IMAGE, caption=f"📢 <b>WorldSIM Hub Announcement:</b>\n\n{msg_text}", parse_mode="HTML")
             sent += 1
             time.sleep(0.05)
         except Exception:
             failed += 1
 
     bot.send_message(m.chat.id, f"✅ Broadcast Complete!\nDelivered: <b>{sent}</b> | Failed: <b>{failed}</b>", parse_mode="HTML")
-
-# ================= USER ENTRY =================
+    # ================= USER ENTRY =================
 @bot.message_handler(commands=["start"])
 def start(m):
     uid = m.from_user.id
@@ -775,7 +773,7 @@ def start(m):
         return
 
     if len(parts) > 1 and parts[1] == "buy":
-        text = "🛒 <b>Available OTP Services</b>\n\nApni pasandida service select karein:"
+        text = "🛒 <b>WorldSIM Hub • Available Services</b>\n\nApni pasandida service select karein:"
         try:
             bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=text, reply_markup=get_service_picker_menu(), parse_mode="HTML")
         except Exception:
@@ -799,21 +797,31 @@ def start(m):
 def support_cmd(m):
     mk = InlineKeyboardMarkup()
     mk.add(InlineKeyboardButton("💬 Open Support Chat", url=SUPPORT_LINK))
-    bot.reply_to(m, f"24/7 Helpline: {SUPPORT_USERNAME}", reply_markup=mk)
+    try:
+        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=f"🛠️ <b>WorldSIM Hub 24/7 Helpline:</b> {SUPPORT_USERNAME}", reply_markup=mk, parse_mode="HTML")
+    except Exception:
+        bot.reply_to(m, f"24/7 Helpline: {SUPPORT_USERNAME}", reply_markup=mk)
 
 @bot.message_handler(commands=["balance"])
 def balance(m):
     if not is_user_member(m.from_user.id):
         send_force_join_prompt(m.chat.id)
         return
-    bot.reply_to(m, f"Wallet Balance: Rs {get_bal(m.from_user.id):.2f}")
+    bal = get_bal(m.from_user.id)
+    try:
+        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption=f"💰 <b>WorldSIM Hub Wallet Balance:</b> Rs {bal:.2f}", parse_mode="HTML")
+    except Exception:
+        bot.reply_to(m, f"Wallet Balance: Rs {bal:.2f}")
 
 @bot.message_handler(commands=["deposit"])
 def dep(m):
     if not is_user_member(m.from_user.id):
         send_force_join_prompt(m.chat.id)
         return
-    bot.reply_to(m, "Deposit amount select karein (Minimum Rs 20):", reply_markup=get_deposit_menu(), parse_mode="HTML")
+    try:
+        bot.send_photo(m.chat.id, photo=MAIN_MENU_IMAGE, caption="💳 <b>Deposit Amount select karein (Minimum Rs 20):</b>", reply_markup=get_deposit_menu(), parse_mode="HTML")
+    except Exception:
+        bot.reply_to(m, "Deposit amount select karein (Minimum Rs 20):", reply_markup=get_deposit_menu(), parse_mode="HTML")
 
 @bot.message_handler(func=lambda m: not m.text.startswith("/"))
 def text_flow(m):
@@ -931,14 +939,14 @@ def callbacks(call):
         try:
             conn = get_db_conn()
             with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM users WHERE referred_by = %s;", (uid,))
+                cur.execute("SELECT COUNT(*) FROM worldsim_users WHERE referred_by = %s;", (uid,))
                 refs = cur.fetchone()[0]
         finally:
             if conn:
                 release_db_conn(conn)
 
         prof_text = (
-            f"👤 <b>User Profile</b>\n\n"
+            f"👤 <b>WorldSIM Hub • User Profile</b>\n\n"
             f"• <b>User ID:</b> <code>{uid}</code>\n"
             f"• <b>Username:</b> @{uname if uname else 'Not Set'}\n"
             f"• <b>Wallet Balance:</b> Rs {bal:.2f}\n"
@@ -948,7 +956,10 @@ def callbacks(call):
         mk = InlineKeyboardMarkup()
         mk.add(InlineKeyboardButton("💳 Add Balance", callback_data="menu_dep"))
         mk.add(InlineKeyboardButton("🏠 Back to Home", callback_data="back_main"))
-        bot.send_message(call.message.chat.id, prof_text, reply_markup=mk, parse_mode="HTML")
+        try:
+            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=prof_text, reply_markup=mk, parse_mode="HTML")
+        except Exception:
+            bot.send_message(call.message.chat.id, prof_text, reply_markup=mk, parse_mode="HTML")
         bot.answer_callback_query(call.id)
         return
 
@@ -967,12 +978,15 @@ def callbacks(call):
         mk = InlineKeyboardMarkup()
         mk.add(InlineKeyboardButton("🛒 Browse Services", callback_data="open_browse_services"))
         mk.add(InlineKeyboardButton("🏠 Back to Home", callback_data="back_main"))
-        bot.send_message(call.message.chat.id, ord_text, reply_markup=mk, parse_mode="HTML")
+        try:
+            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption=ord_text, reply_markup=mk, parse_mode="HTML")
+        except Exception:
+            bot.send_message(call.message.chat.id, ord_text, reply_markup=mk, parse_mode="HTML")
         bot.answer_callback_query(call.id)
         return
 
     if call.data == "open_browse_services":
-        text = "🛒 <b>Available OTP Services</b>\n\nApni pasandida service select karein:"
+        text = "🛒 <b>WorldSIM Hub • Available Services</b>\n\nApni pasandida service select karein:"
         if call.message.photo:
             try:
                 bot.edit_message_media(
@@ -1092,7 +1106,10 @@ def callbacks(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=get_countries_paged_menu(service, page), parse_mode="HTML")
 
     elif call.data == "menu_dep":
-        bot.send_message(call.message.chat.id, "Deposit Amount select karein ya direct type karein (Minimum Rs 20):", reply_markup=get_deposit_menu())
+        try:
+            bot.send_photo(call.message.chat.id, photo=MAIN_MENU_IMAGE, caption="💳 <b>Deposit Amount select karein ya direct type karein (Minimum Rs 20):</b>", reply_markup=get_deposit_menu(), parse_mode="HTML")
+        except Exception:
+            bot.send_message(call.message.chat.id, "Deposit Amount select karein ya direct type karein (Minimum Rs 20):", reply_markup=get_deposit_menu())
         bot.answer_callback_query(call.id)
     elif call.data.startswith("setdep_"):
         amt = float(call.data.split("_")[1])
@@ -1185,7 +1202,7 @@ def callbacks(call):
             "service": s_name,
             "country": f"{country_data.get('flag')} {country_data.get('name')}",
             "phone": phone,
-            "status": "Waiting for OTP"
+                      "status": "Waiting for OTP"
         }
 
         cancel_mk = InlineKeyboardMarkup()
@@ -1218,3 +1235,4 @@ while True:
     except Exception as e:
         print(f"Connection retry error: {e}")
         time.sleep(3)
+            
