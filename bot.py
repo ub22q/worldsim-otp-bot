@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2 import pool
 
 # ================= CONFIGURATION =================
-BOT_TOKEN = "9109714291:AAGpK80XtBacAcm8VRnThBBR4t7CxxK6lKM"
+BOT_TOKEN = "9109714291:AAFQny4eo62NZQy7TAnxXJQf3dG420gw2O4"
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 
@@ -52,6 +52,7 @@ SERVICE_IMAGES = {
 }
 
 PER_REFER_REWARD = 0.70
+TELEGRAM_MARGIN_INR = 10.0
 ITEMS_PER_PAGE = 8
 
 SERVICES = {
@@ -107,8 +108,40 @@ active_orders = {}
 user_search_state = {}
 user_recent_orders = {}
 user_dep_cache = {}
+tg_live_price_cache = {"time": 0, "prices": {}}
 BOT_USERNAME_CACHE = None
 
+def get_telegram_live_catalog():
+    now = time.time()
+    if now - tg_live_price_cache["time"] < 300 and tg_live_price_cache["prices"]:
+        return tg_live_price_cache["prices"]
+    try:
+        r = requests.get(f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getPrices&service=tg", timeout=5)
+        data = r.json()
+        live_map = {}
+        for cid, info in data.items():
+            if isinstance(info, dict) and "tg" in info:
+                raw_cost = float(info["tg"].get("cost", 0))
+                if raw_cost > 0:
+                    live_map[str(cid)] = round(raw_cost + TELEGRAM_MARGIN_INR, 2)
+        if live_map:
+            tg_live_price_cache["time"] = now
+            tg_live_price_cache["prices"] = live_map
+            return live_map
+    except Exception:
+        pass
+    return {}
+
+def get_service_catalog(service):
+    items = [dict(c) for c in CATALOG.get(service, [])]
+    if service == "tg":
+        live_map = get_telegram_live_catalog()
+        if live_map:
+            for item in items:
+                if item["id"] in live_map:
+                    item["price"] = live_map[item["id"]]
+    return items
+# --- END OF PART 1 ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -178,6 +211,7 @@ def init_db():
             release_db_conn(conn)
 
 init_db()
+
 def get_user(uid):
     uid = int(uid)
     conn = None
@@ -258,7 +292,7 @@ def update_bal(uid, amt):
     finally:
         if conn:
             release_db_conn(conn)
-
+# --- END OF PART 2 ---
 def increment_purchase_count(uid):
     uid = int(uid)
     conn = None
@@ -373,11 +407,11 @@ def format_user_tag(buyer_id, buyer_username):
         return f"@{u}"
     str_uid = str(buyer_id)
     return str_uid[:2] + "••••" + str_uid[-2:] if len(str_uid) > 4 else "••••" + str_uid[-2:]
-    def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
+
+def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
     user_tag = format_user_tag(buyer_id, buyer_username)
     str_phone = str(phone_num)
     masked_phone = str_phone[:4] + "••••" + str_phone[-2:] if len(str_phone) > 6 else str_phone[:2] + "••••"
-
     now_str = datetime.datetime.now().strftime("%d %b %Y  %H:%M")
     price_usd = round(price_inr / 88.0, 2)
 
@@ -398,15 +432,13 @@ def format_user_tag(buyer_id, buyer_username):
         "|                                      |\n"
         "+--------------------------------------+"
     )
-    bot_uname = get_bot_username()
     mk = InlineKeyboardMarkup()
-    mk.add(InlineKeyboardButton("🛒 Buy Number", url=f"https://t.me/{bot_uname}?start=buy"))
-
+    mk.add(InlineKeyboardButton("🛒 Buy Number", url=f"https://t.me/{get_bot_username()}?start=buy"))
     try:
         bot.send_message(RECEIPT_CHANNEL_ID, f"```\n{receipt}\n```", reply_markup=mk, parse_mode="Markdown")
     except Exception as e:
         print(f"Receipt channel post error: {e}")
-
+# --- END OF PART 3 ---
 def send_feedback_receipt_to_channel(buyer_id, stars, service_name, buyer_username):
     user_tag = format_user_tag(buyer_id, buyer_username)
     star_str = "⭐" * stars
@@ -426,10 +458,8 @@ def send_feedback_receipt_to_channel(buyer_id, stars, service_name, buyer_userna
         "|      TRUSTED & VERIFIED PURCHASE     |\n"
         "+--------------------------------------+"
     )
-    bot_uname = get_bot_username()
     mk = InlineKeyboardMarkup()
-    mk.add(InlineKeyboardButton("🛒 Buy Number", url=f"https://t.me/{bot_uname}?start=buy"))
-
+    mk.add(InlineKeyboardButton("🛒 Buy Number", url=f"https://t.me/{get_bot_username()}?start=buy"))
     try:
         bot.send_message(RECEIPT_CHANNEL_ID, f"```\n{feedback_msg}\n```", reply_markup=mk, parse_mode="Markdown")
     except Exception as e:
@@ -479,7 +509,7 @@ def get_service_picker_menu():
 
 def get_countries_paged_menu(service, page=0):
     markup = InlineKeyboardMarkup(row_width=2)
-    country_list = CATALOG.get(service, [])
+    country_list = get_service_catalog(service)
     start_idx = page * ITEMS_PER_PAGE
     end_idx = start_idx + ITEMS_PER_PAGE
     current_page_items = country_list[start_idx:end_idx]
@@ -611,6 +641,7 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
     if activation_id in active_orders:
         del active_orders[activation_id]
     bot.send_message(cid, f"⏳ <b>20 Minute Timeout!</b>\n\n20 minute me OTP receive nahi hua. Order cancel kar diya gaya hai.\n\n💰 <b>Refund:</b> ₹{price:.2f} wallet me wapas add ho gaye hain.\nCurrent Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
+# --- END OF PART 4 ---
 @bot.message_handler(commands=["list", "users", "userlist"])
 def admin_users_list(m):
     if m.from_user.id not in ALL_ADMINS:
@@ -775,7 +806,7 @@ def text_flow(m):
     raw = m.text.strip()
     if uid in user_search_state:
         service = user_search_state.pop(uid)
-        matches = [c for c in CATALOG.get(service, []) if raw.lower() in c["name"].lower()]
+        matches = [c for c in get_service_catalog(service) if raw.lower() in c["name"].lower()]
         if not matches:
             bot.reply_to(m, f"❌ '<b>{raw}</b>' naam ka koi country nahi mila!", reply_markup=get_service_menu(), parse_mode="HTML")
             return
@@ -1002,7 +1033,7 @@ def callbacks(call):
         parts = call.data.split("_")
         service, code, p = parts[1], parts[2], float(parts[3])
         s_name = SERVICES.get(service, {}).get("name", service.upper())
-        country_data = next((c for c in CATALOG.get(service, []) if c["id"] == code), {"name": "Country", "flag": "🌐"})
+        country_data = next((c for c in get_service_catalog(service) if c["id"] == code), {"name": "Country", "flag": "🌐"})
         if get_bal(uid) < p:
             bot.answer_callback_query(call.id, f"Balance kam hai! Price: ₹{p}, Bal: ₹{get_bal(uid):.2f}", show_alert=True)
             return
@@ -1019,7 +1050,7 @@ def callbacks(call):
             bot.edit_message_text(f"❌ Failed: {res.get('error') or res.get('msg') or 'Stock unavailable'}", chat_id=call.message.chat.id, message_id=wait_msg.message_id)
             return
         update_bal(uid, -p)
-                increment_purchase_count(uid)
+              increment_purchase_count(uid)
         user_recent_orders[uid] = {"service": s_name, "country": f"{country_data.get('flag')} {country_data.get('name')}", "phone": phone, "status": "Waiting for OTP"}
         cancel_mk = InlineKeyboardMarkup()
         cancel_mk.add(InlineKeyboardButton("❌ Cancel Order & Refund", callback_data=f"cancel_order_{activation_id}_{p}"))
@@ -1041,4 +1072,5 @@ while True:
     except Exception as e:
         print(f"Connection retry error: {e}")
         time.sleep(3)
-        
+# --- END OF PART 5 ---
+                    
