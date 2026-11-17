@@ -15,29 +15,24 @@ BOT_TOKEN = "9109714291:AAGpK80XtBacAcm8VRnThBBR4t7CxxK6lKM"
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 
-# Neon PostgreSQL Cloud Database
 DATABASE_URL = "postgresql://neondb_owner:npg_Hy4LqEYdOvk7@ep-weathered-river-bdjtcb91-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-# ONLY YOUR ADMINS
 MAIN_ADMIN = 8539777823           # @ub2_q
 SECOND_ADMIN = 9013970075         # @Worldsim_hub
 
 ALL_ADMINS = [MAIN_ADMIN, SECOND_ADMIN]
 
-# YOUR UPI DETAILS
 UPI_ID_1 = "alone..hacker@ybl"    # Primary UPI
 UPI_ID_2 = "noname0011@axl"       # Backup UPI
 MERCHANT_NAME = "WorldSIM Store"
 
-# SUPPORT HANDLE
 SUPPORT_USERNAME = "@Worldsim_hub"
 SUPPORT_LINK = "https://t.me/Worldsim_hub"
 
-# NEW RECEIPT & UPDATE CHANNELS (ONLY 2 FORCE JOIN)
 RECEIPT_CHANNEL_ID = -1004497033717
 UPDATE_CHANNEL_ID  = -1003965474093
 
-PROOFS_CHANNEL_LINK   = "https://t.me/+3gxG5EZyJ2UzY2Rl"  # <-- Yahan apna -1004497033717 ka invite link daal dena
+PROOFS_CHANNEL_LINK   = "https://t.me/+3gxG5EZyJ2UzY2Rl"
 OFFICIAL_CHANNEL_LINK = "https://t.me/smmupdatess"
 
 CHANNELS = [
@@ -53,7 +48,6 @@ CHANNELS = [
     }
 ]
 
-# Visual Banners
 FORCE_JOIN_IMAGE = "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&auto=format&fit=crop&q=80"
 MAIN_MENU_IMAGE  = "https://images.unsplash.com/photo-1557821552-17105176677c?w=800&auto=format&fit=crop&q=80"
 BROADCAST_IMAGE  = "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&auto=format&fit=crop&q=80"
@@ -267,7 +261,7 @@ def set_referrer(uid, ref_id):
         if conn:
             release_db_conn(conn)
 
-# ================= FORCE JOIN (ONLY 2 CHANNELS) =================
+# ================= FORCE JOIN =================
 def get_user_unjoined_channels(uid):
     if uid in ALL_ADMINS:
         return []
@@ -316,7 +310,6 @@ def format_user_tag(buyer_id, buyer_username):
     str_uid = str(buyer_id)
     return str_uid[:2] + "••••" + str_uid[-2:] if len(str_uid) > 4 else "••••" + str_uid[-2:]
 
-# ================= SALE RECEIPT WITH 'BUY NUMBER' BUTTON =================
 def send_sale_receipt(service_name, country_name, country_flag, phone_num, activation_id, price_inr, buyer_id, buyer_username):
     user_tag = format_user_tag(buyer_id, buyer_username)
     str_phone = str(phone_num)
@@ -342,8 +335,6 @@ def send_sale_receipt(service_name, country_name, country_flag, phone_num, activ
         "|                                      |\n"
         "+--------------------------------------+"
     )
-    
-    # Direct Buy Number Button attached below slip
     bot_uname = get_bot_username()
     mk = InlineKeyboardMarkup()
     mk.add(InlineKeyboardButton("🛒 Buy Number", url=f"https://t.me/{bot_uname}?start=buy"))
@@ -392,7 +383,6 @@ def get_feedback_menu(service_name):
     )
     return mk
 
-# ================= PROFESSIONAL CLEAN HOMEPAGE LAYOUT =================
 def get_service_menu():
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -505,4 +495,16 @@ def poll_otp_20_minutes(cid, uid, activation_id, price, service_name, status_msg
     max_checks = 300
     
     for check in range(max_checks):
- 
+        time.sleep(4)
+        if active_orders.get(activation_id, {}).get("status") == "cancelled_by_user":
+            del active_orders[activation_id]
+            return
+
+        try:
+            r = requests.get(status_url, timeout=5)
+            text_res = r.text.strip()
+
+            if "STATUS_OK" in text_res:
+                parts = text_res.split(":")
+                otp = parts[1] if len(parts) > 1 else text_res
+               
