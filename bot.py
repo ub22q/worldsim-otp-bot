@@ -16,7 +16,7 @@ BOT_TOKEN = "9109714291:AAFQny4eo62NZQy7TAnxXJQf3dG420gw2O4"
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 
-ZAPUPI_API_KEY = "Zap81dd07798ad86781b13f7e7e632d1486"
+ZAPUPI_API_KEY = "zap81dd07798ad86781b13f7e7e632d1486"
 ZAPUPI_FEE_PERCENT = 2.0
 MERCHANT_UPI_ID = "paytm.s4qvafn@pty"
 MERCHANT_NAME = "WorldSIM Hub"
@@ -481,28 +481,30 @@ def create_zapupi_order(uid, amount):
     pay_note = f"WorldSIM{uuid.uuid4().hex[:8].upper()}"
 
     upi_id_to_use = MERCHANT_UPI_ID
+    payment_url = None
     qr_url = None
 
     try:
         payload = {
-            "token_key": ZAPUPI_API_KEY,
+            "zap_key": ZAPUPI_API_KEY,
             "order_id": order_id,
-            "amount": f"{amount:.2f}",
-            "customer_name": f"User_{uid}",
-            "customer_email": "customer@worldsim.in",
+            "amount": str(amount),
             "customer_mobile": "9876543210",
             "remark": pay_note
         }
-        resp = requests.post("https://zapupi.com/api/create-order", data=payload, timeout=8)
+        headers = {"Content-Type": "application/json"}
+        resp = requests.post("https://pay.zapupi.com/api/create-order", json=payload, headers=headers, timeout=10)
         data = resp.json()
-        if data.get("status") in [True, "true", "SUCCESS", "success", 200]:
-            res_data = data.get("data") or data
-            if res_data.get("upi_id"):
-                upi_id_to_use = res_data.get("upi_id")
-            if res_data.get("qr_image") or res_data.get("qr_url"):
-                qr_url = res_data.get("qr_image") or res_data.get("qr_url")
+        if str(data.get("status", "")).lower() == "success":
+            payment_url = data.get("payment_url")
+            if data.get("upi_id"):
+                upi_id_to_use = data.get("upi_id")
+            if data.get("qr_url") or data.get("qr_image"):
+                qr_url = data.get("qr_url") or data.get("qr_image")
+            elif payment_url:
+                qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(payment_url)}"
     except Exception as e:
-        print(f"ZapUPI create order fallback: {e}")
+        print(f"ZapUPI create order error: {e}")
 
     if not qr_url:
         upi_string = f"upi://pay?pa={upi_id_to_use}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={pay_note}"
@@ -515,6 +517,7 @@ def create_zapupi_order(uid, amount):
         "net_credit": net_credit,
         "upi_id": upi_id_to_use,
         "pay_note": pay_note,
+        "payment_url": payment_url,
         "created_at": time.time()
     }
     pending_zap_orders[uid] = order_obj
@@ -523,25 +526,23 @@ def create_zapupi_order(uid, amount):
 def verify_zapupi_utr(order_id, utr):
     try:
         payload = {
-            "token_key": ZAPUPI_API_KEY,
-            "order_id": order_id,
-            "utr": utr
+            "zap_key": ZAPUPI_API_KEY,
+            "order_id": order_id
         }
-        for endpoint in ["https://zapupi.com/api/check-order-status", "https://zapupi.com/api/verify-utr", "https://zapupi.com/api/order-status"]:
-            try:
-                r = requests.post(endpoint, data=payload, timeout=8)
-                data = r.json()
-                status_val = str(data.get("status", "")).upper()
-                txn_status = str((data.get("data") or {}).get("status", "")).upper()
-                if status_val in ["SUCCESS", "PAID", "COMPLETED", "TRUE"] or txn_status in ["SUCCESS", "PAID", "COMPLETED"]:
-                    return True, "Verified"
-                if "INVALID" in str(data.get("message", "")).upper() or "FAILED" in status_val:
-                    return False, data.get("message", "UTR verify nahi hua")
-            except Exception:
-                continue
+        headers = {"Content-Type": "application/json"}
+        r = requests.post("https://pay.zapupi.com/api/order-status", json=payload, headers=headers, timeout=10)
+        data = r.json()
+        status_val = str(data.get("status", "")).lower()
+        txn_status = str((data.get("data") or {}).get("status", "")).lower()
+        if status_val in ["success", "paid", "completed"] or txn_status in ["success", "paid", "completed"]:
+            api_utr = str(data.get("utr") or (data.get("data") or {}).get("utr") or "")
+            if api_utr and utr and api_utr != utr:
+                return False, "UTR is order se match nahi hua!"
+            return True, "Verified"
+        return False, data.get("message", "Transaction abhi pending hai ya complete nahi hua")
     except Exception as e:
         print(f"ZapUPI verify error: {e}")
-    return False, "Transaction pending ya UTR match nahi hua"
+    return False, "ZapUPI server connection error"
 
 def get_feedback_menu(service_name):
     mk = InlineKeyboardMarkup(row_width=5)
@@ -651,7 +652,7 @@ def get_recharge_menu():
 def send_zapupi_qr_card(chat_id, uid, amount):
     order_obj, qr_url = create_zapupi_order(uid, amount)
     caption = (
-        f"<b>Scan the QR and pay exact amount</b>\n\n"
+        f"<b>Scan the QR or tap Pay Now to pay exact amount</b>\n\n"
         f"<b>Transaction ID:</b>\n"
         f"<code>{order_obj['order_id']}</code>\n\n"
         f"<blockquote>"
@@ -665,6 +666,8 @@ def send_zapupi_qr_card(chat_id, uid, amount):
         f"<i>UTR is matched once — same UTR cannot be reused.</i>"
     )
     mk = InlineKeyboardMarkup(row_width=1)
+    if order_obj.get("payment_url"):
+        mk.add(InlineKeyboardButton("💳 Pay Now (UPI Link) ↗", url=order_obj["payment_url"]))
     mk.add(InlineKeyboardButton("⚙️ Submit UTR / Txn ID", callback_data=f"submit_utr_{order_obj['order_id']}"))
     mk.add(InlineKeyboardButton("🚫 Cancel Payment", callback_data=f"cancel_zap_{order_obj['order_id']}"))
     bot.send_photo(chat_id, photo=qr_url, caption=caption, reply_markup=mk, parse_mode="HTML")
@@ -771,6 +774,31 @@ def admin_users_list(m):
         chunk += line
     if chunk:
         bot.send_message(m.chat.id, chunk, parse_mode="HTML")
+
+@bot.message_handler(commands=["broadcast", "sendall", "update"])
+def broadcast_message(m):
+    if m.from_user.id not in ALL_ADMINS:
+        return
+    msg_text = m.text.split(" ", 1)[1].strip() if " " in m.text else "🚀 WorldSIM Hub ab fir se open ho gaya hai! Ab aap instant OTP aur virtual numbers buy kar sakte hain."
+    conn = None
+    all_users = []
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM worldsim_users;")
+            all_users = cur.fetchall()
+    finally:
+        if conn:
+            release_db_conn(conn)
+    sent = 0
+    for user in all_users:
+        try:
+            bot.send_message(user[0], f"📢 <b>WorldSIM Hub Notice:</b>\n\n{msg_text}", parse_mode="HTML")
+            sent += 1
+            time.sleep(0.05)
+        except Exception:
+            pass
+    bot.send_message(m.chat.id, f"✅ Broadcast Complete! Delivered: <b>{sent}</b>", parse_mode="HTML")
 
 @bot.message_handler(commands=["addbalance", "addbal", "givebal"])
 def admin_add_balance(m):
@@ -1028,8 +1056,8 @@ def callbacks(call):
             "<i>By using this bot you agree to all terms below.</i>\n\n"
             "<b>1. No Refunds</b>\n"
             "All sales are final. No refunds under any circumstances.\n\n"
-            "<b>2. Sub-₹25 Rule</b>\n"
-            "Accounts priced below ₹25 carry no warranty for login failures or missing codes.\n\n"
+            "<b>2. Sub-₹40 Rule</b>\n"
+            "Accounts priced below ₹40 carry no warranty for login failures or missing codes.\n\n"
             "<b>3. No Re-logins</b>\n"
             "Sessions are permanently closed after purchase. One login only.\n\n"
             "<b>4. Premium Accounts</b>\n"
@@ -1146,4 +1174,3 @@ while True:
         print(f"Connection retry error: {e}")
         time.sleep(3)
 # --- END OF PART 6 ---
-                                
