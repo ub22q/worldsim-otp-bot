@@ -482,7 +482,7 @@ def create_zapupi_order(uid, amount):
 
     upi_id_to_use = MERCHANT_UPI_ID
     payment_url = None
-    qr_url = None
+    upi_intent_str = None
     api_err = ""
 
     try:
@@ -500,18 +500,17 @@ def create_zapupi_order(uid, amount):
             payment_url = data.get("payment_url")
             if data.get("upi_id"):
                 upi_id_to_use = data.get("upi_id")
-            if data.get("qr_url") or data.get("qr_image"):
-                qr_url = data.get("qr_url") or data.get("qr_image")
-            elif payment_url:
-                qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(payment_url)}"
+            if data.get("upi_intent") or data.get("upi_link"):
+                upi_intent_str = data.get("upi_intent") or data.get("upi_link")
         else:
             api_err = f"\n⚠️ <i>ZapUPI Info: {data.get('message', resp.text[:80])}</i>"
     except Exception as e:
         api_err = f"\n⚠️ <i>API Error: {str(e)[:60]}</i>"
 
-    if not qr_url:
-        upi_string = f"upi://pay?pa={upi_id_to_use}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={pay_note}"
-        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(upi_string)}"
+    if not upi_intent_str:
+        upi_intent_str = f"upi://pay?pa={upi_id_to_use}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={pay_note}"
+
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(upi_intent_str)}"
 
     order_obj = {
         "order_id": order_id,
