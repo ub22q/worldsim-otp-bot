@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import time
 import datetime
@@ -132,7 +133,7 @@ def get_service_catalog(service):
                 if item["id"] in live_map:
                     item["price"] = live_map[item["id"]]
     return items
-# --- END OF PART 1 ---
+
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -206,6 +207,15 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             """)
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS verified_orders (
+                order_id TEXT PRIMARY KEY,
+                user_id BIGINT,
+                utr TEXT,
+                amount REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """)
         conn.commit()
     except Exception as e:
         print(f"Database Init Error: {e}")
@@ -259,28 +269,36 @@ def get_bal(uid):
     bal, _, _ = get_user(uid)
     return bal
 
-def is_utr_used(utr):
+def is_utr_or_order_used(utr, order_id):
     conn = None
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM used_utrs WHERE utr = %s;", (utr,))
-            return cur.fetchone() is not None
-    except Exception:
+            if cur.fetchone():
+                return True
+            cur.execute("SELECT 1 FROM verified_orders WHERE order_id = %s;", (order_id,))
+            if cur.fetchone():
+                return True
         return False
+    except Exception:
+        return True
     finally:
         if conn:
             release_db_conn(conn)
 
-def mark_utr_used(utr, uid, amount):
+def mark_utr_and_order_used(utr, order_id, uid, amount):
     conn = None
     try:
         conn = get_db_conn()
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO used_utrs (utr, user_id, amount) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING;", (utr, int(uid), float(amount)))
+            cur.execute("INSERT INTO used_utrs (utr, user_id, amount) VALUES (%s, %s, %s);", (utr, int(uid), float(amount)))
+            cur.execute("INSERT INTO verified_orders (order_id, user_id, utr, amount) VALUES (%s, %s, %s, %s);", (order_id, int(uid), utr, float(amount)))
         conn.commit()
+        return True
     except Exception as e:
-        print(f"mark_utr_used Error: {e}")
+        print(f"mark_utr_and_order_used Error: {e}")
+        return False
     finally:
         if conn:
             release_db_conn(conn)
@@ -308,7 +326,7 @@ def update_bal(uid, amt):
     finally:
         if conn:
             release_db_conn(conn)
-# --- END OF PART 2 ---
+
 def increment_purchase_count(uid):
     uid = int(uid)
     conn = None
@@ -473,14 +491,13 @@ def send_feedback_receipt_to_channel(buyer_id, stars, service_name, buyer_userna
         bot.send_message(RECEIPT_CHANNEL_ID, f"```\n{feedback_msg}\n```", reply_markup=mk, parse_mode="Markdown")
     except Exception as e:
         print(f"Feedback error: {e}")
-# --- END OF PART 3 ---
+
 def create_zapupi_order(uid, amount):
     order_id = f"{int(time.time())}{str(uid)[-4:]}"
     fee = round(amount * (ZAPUPI_FEE_PERCENT / 100.0), 2)
     net_credit = round(amount - fee, 2)
     pay_note = f"WorldSIM{order_id[-6:]}"
 
-    upi_id_to_use = MERCHANT_UPI_ID
     payment_url = None
     upi_intent_str = None
     api_err = ""
@@ -498,17 +515,14 @@ def create_zapupi_order(uid, amount):
         data = resp.json()
         if str(data.get("status", "")).lower() == "success":
             payment_url = data.get("payment_url")
-            if data.get("upi_id"):
-                upi_id_to_use = data.get("upi_id")
-            if data.get("upi_intent") or data.get("upi_link"):
-                upi_intent_str = data.get("upi_intent") or data.get("upi_link")
+            upi_intent_str = data.get("upi_intent") or data.get("upi_link") or payment_url
         else:
-            api_err = f"\n⚠️ <i>ZapUPI Info: {data.get('message', resp.text[:80])}</i>"
+            api_err = f"\n⚠️ <i>Gateway Error: {data.get('message', resp.text[:80])}</i>"
     except Exception as e:
         api_err = f"\n⚠️ <i>API Error: {str(e)[:60]}</i>"
 
-    if not upi_intent_str:
-        upi_intent_str = f"upi://pay?pa={upi_id_to_use}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={pay_note}"
+    if not payment_url:
+        return None, None, api_err
 
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(upi_intent_str)}"
 
@@ -517,14 +531,12 @@ def create_zapupi_order(uid, amount):
         "amount": amount,
         "fee": fee,
         "net_credit": net_credit,
-        "upi_id": upi_id_to_use,
         "pay_note": pay_note,
         "payment_url": payment_url,
-        "api_err": api_err,
         "created_at": time.time()
     }
     pending_zap_orders[uid] = order_obj
-    return order_obj, qr_url
+    return order_obj, qr_url, ""
 
 def verify_zapupi_utr(order_id, utr):
     try:
@@ -536,16 +548,19 @@ def verify_zapupi_utr(order_id, utr):
         r = requests.post("https://pay.zapupi.com/api/order-status", json=payload, headers=headers, timeout=10)
         data = r.json()
         status_val = str(data.get("status", "")).lower()
-        txn_status = str((data.get("data") or {}).get("status", "")).lower()
+        data_obj = data.get("data") if isinstance(data.get("data"), dict) else {}
+        txn_status = str(data_obj.get("status", "")).lower()
+
         if status_val in ["success", "paid", "completed"] or txn_status in ["success", "paid", "completed"]:
-            api_utr = str(data.get("utr") or (data.get("data") or {}).get("utr") or "")
-            if api_utr and utr and api_utr != utr:
+            api_utr = str(data.get("utr") or data_obj.get("utr") or "").strip()
+            if api_utr and api_utr != utr:
                 return False, "UTR is order se match nahi hua!"
             return True, "Verified"
-        return False, data.get("message", "Transaction abhi pending hai ya complete nahi hua")
+
+        return False, data.get("message", "Abhi payment complete nahi dikh raha")
     except Exception as e:
-        print(f"ZapUPI verify error: {e}")
-    return False, "ZapUPI server connection error"
+        print(f"Payment verify error: {e}")
+    return False, "Payment server connection error"
 
 def get_feedback_menu(service_name):
     mk = InlineKeyboardMarkup(row_width=5)
@@ -653,28 +668,30 @@ def get_recharge_menu():
     return mk
 
 def send_zapupi_qr_card(chat_id, uid, amount):
-    order_obj, qr_url = create_zapupi_order(uid, amount)
+    order_obj, qr_url, err = create_zapupi_order(uid, amount)
+    if not order_obj:
+        bot.send_message(chat_id, f"❌ <b>Payment Link generate nahi ho paya!</b>{err}\nSupport: {SUPPORT_USERNAME}", parse_mode="HTML")
+        return
+
     caption = (
-        f"<b>Scan the QR or tap Pay Now to pay exact amount</b>\n\n"
+        f"<b>Tap 'Pay Now' button below to pay exact amount</b>\n\n"
         f"<b>Transaction ID:</b>\n"
         f"<code>{order_obj['order_id']}</code>\n\n"
         f"<blockquote>"
         f"❕ Note — Minimum deposit is ₹10\n"
         f"💯 Platform fee: {ZAPUPI_FEE_PERCENT:g}% (₹{order_obj['fee']:.2f})\n"
         f"💰 You receive: <b>₹{order_obj['net_credit']:.2f}</b> (after 2% fee)\n"
-        f"📲 UPI: <code>{order_obj['upi_id']}</code>\n"
         f"🏷️ Payment note: <code>{order_obj['pay_note']}</code>"
-        f"</blockquote>{order_obj.get('api_err', '')}\n\n"
-        f"After payment, tap <b>Submit UTR / Txn ID</b> and send your UTR.\n"
-        f"<i>UTR is matched once — same UTR cannot be reused.</i>"
+        f"</blockquote>\n\n"
+        f"Payment complete karne ke baad <b>Submit UTR / Txn ID</b> par tap karke apna <b>12-digit UTR number</b> bhejein.\n"
+        f"<i>One UTR = One credit only.</i>"
     )
     mk = InlineKeyboardMarkup(row_width=1)
-    if order_obj.get("payment_url"):
-        mk.add(InlineKeyboardButton("💳 Pay Now (UPI Link) ↗", url=order_obj["payment_url"]))
+    mk.add(InlineKeyboardButton("💳 Pay Now (Instant UPI) ↗", url=order_obj["payment_url"]))
     mk.add(InlineKeyboardButton("⚙️ Submit UTR / Txn ID", callback_data=f"submit_utr_{order_obj['order_id']}"))
     mk.add(InlineKeyboardButton("🚫 Cancel Payment", callback_data=f"cancel_zap_{order_obj['order_id']}"))
     bot.send_photo(chat_id, photo=qr_url, caption=caption, reply_markup=mk, parse_mode="HTML")
-# --- END OF PART 4 ---
+
 def poll_otp_20_minutes(cid, uid, uname, activation_id, price, service_name, country_name, country_flag, phone):
     active_orders[activation_id] = {"status": "waiting"}
     status_url = f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getStatus&id={activation_id}"
@@ -769,7 +786,7 @@ def admin_users_list(m):
     chunk = header
     for idx, r in enumerate(rows, 1):
         uid_val, bal_val, buys_val, uname_val, nick_val = r
-        display_user = f"{uname_val} ({nick_val})" if uname_val else f"{nick_val or 'User'} [<code>{uid_val}</code>]"
+        display_user = f"{uname_val} ({nick_val}) [<code>{uid_val}</code>]" if uname_val else f"{nick_val or 'User'} [<code>{uid_val}</code>]"
         line = f"{idx}. {display_user} | Bal: <b>₹{float(bal_val):.2f}</b> | Buys: <b>{int(buys_val)}</b>\n"
         if len(chunk) + len(line) > 3800:
             bot.send_message(m.chat.id, chunk, parse_mode="HTML")
@@ -777,6 +794,36 @@ def admin_users_list(m):
         chunk += line
     if chunk:
         bot.send_message(m.chat.id, chunk, parse_mode="HTML")
+
+@bot.message_handler(commands=["cutuser"])
+def admin_cut_by_username(m):
+    if m.from_user.id not in ALL_ADMINS:
+        return
+    parts = m.text.split()
+    if len(parts) < 3:
+        bot.reply_to(m, "Format: <code>/cutuser @username <amount></code>", parse_mode="HTML")
+        return
+    uname_target = "@" + parts[1].replace("@", "")
+    try:
+        amount = float(parts[2])
+    except ValueError:
+        bot.reply_to(m, "Amount sahi number hona chahiye!")
+        return
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id FROM worldsim_users WHERE LOWER(username) = LOWER(%s);", (uname_target,))
+            r = cur.fetchone()
+            if not r:
+                bot.reply_to(m, f"❌ {uname_target} database me nahi mila!")
+                return
+            target_uid = int(r[0])
+    finally:
+        if conn:
+            release_db_conn(conn)
+    new_bal = update_bal(target_uid, -amount)
+    bot.reply_to(m, f"✂️ Deducted ₹{amount:.2f} from {uname_target} (<code>{target_uid}</code>)\nRemaining Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
 
 @bot.message_handler(commands=["broadcast", "sendall", "update"])
 def broadcast_message(m):
@@ -856,7 +903,7 @@ def admin_cut_balance(m):
         return
     new_bal = update_bal(target_uid, -amount)
     bot.reply_to(m, f"✂️ Deducted ₹{amount:.2f} from <code>{target_uid}</code>\nRemaining Balance: <b>₹{new_bal:.2f}</b>", parse_mode="HTML")
-# --- END OF PART 5 ---
+
 @bot.message_handler(commands=["start"])
 def start(m):
     uid = m.from_user.id
@@ -904,13 +951,14 @@ def text_flow(m):
 
     if state and state.startswith("awaiting_utr_"):
         order_id = state.replace("awaiting_utr_", "")
-        utr = "".join(ch for ch in raw if ch.isalnum())
-        if len(utr) < 10:
-            bot.reply_to(m, "⚠️ Sahi 12-digit UTR / Transaction ID enter karein!")
+        utr = raw.strip()
+        if not re.fullmatch(r"\d{12}", utr):
+            bot.reply_to(m, "⚠️ <b>Sirf 12-digit numeric UTR number enter karein!</b>\n<i>(PhonePe ka 'T2611...' Transaction ID nahi, neeche likha 12-digit UTR number dalein)</i>", parse_mode="HTML")
             return
-        if is_utr_used(utr):
+
+        if is_utr_or_order_used(utr, order_id):
             user_input_state.pop(uid, None)
-            bot.reply_to(m, "❌ <b>Yeh UTR pehle hi use ho chuka hai!</b>\n<i>Same UTR cannot be reused.</i>", parse_mode="HTML")
+            bot.reply_to(m, "❌ <b>Yeh UTR ya Order pehle hi verify ho chuka hai!</b>\n<i>One UTR = One credit only.</i>", parse_mode="HTML")
             return
 
         order_obj = pending_zap_orders.get(uid)
@@ -919,12 +967,14 @@ def text_flow(m):
             bot.reply_to(m, "⚠️ Order expire ho gaya hai. Kripya dubara Recharge par click karein.")
             return
 
-        wait_m = bot.reply_to(m, "⏳ <b>ZapUPI se UTR verify kiya ja raha hai...</b>", parse_mode="HTML")
+        wait_m = bot.reply_to(m, "⏳ <b>Payment UTR verify kiya ja raha hai...</b>", parse_mode="HTML")
         ok, msg_status = verify_zapupi_utr(order_id, utr)
         if ok:
+            if not mark_utr_and_order_used(utr, order_id, uid, order_obj["net_credit"]):
+                bot.edit_message_text("❌ <b>Yeh UTR pehle hi use ho chuka hai!</b>", chat_id=m.chat.id, message_id=wait_m.message_id, parse_mode="HTML")
+                return
             user_input_state.pop(uid, None)
             pending_zap_orders.pop(uid, None)
-            mark_utr_used(utr, uid, order_obj["net_credit"])
             new_bal = update_bal(uid, order_obj["net_credit"])
             bot.edit_message_text(
                 f"✅ <b>Deposit Verified!</b>\n\n"
@@ -936,13 +986,13 @@ def text_flow(m):
             )
             for adm in ALL_ADMINS:
                 try:
-                    bot.send_message(adm, f"💰 <b>Auto ZapUPI Deposit!</b>\nUser: <code>{uid}</code>\nPaid: ₹{order_obj['amount']:.2f} | Added: ₹{order_obj['net_credit']:.2f}\nUTR: <code>{utr}</code>", parse_mode="HTML")
+                    bot.send_message(adm, f"💰 <b>WorldSIM Hub — Instant UPI Deposit!</b>\nUser: <code>{uid}</code>\nPaid: ₹{order_obj['amount']:.2f} | Added: ₹{order_obj['net_credit']:.2f}\nUTR: <code>{utr}</code>", parse_mode="HTML")
                 except Exception:
                     pass
         else:
             bot.edit_message_text(
                 f"❌ <b>Verification Failed:</b> {msg_status}\n\n"
-                f"Agar aapne abhi payment kiya hai toh 10 second ruk kar dobara UTR bhejein ya support se contact karein: {SUPPORT_USERNAME}",
+                f"Agar aapne abhi payment kiya hai toh 10 second ruk kar dobara 12-digit UTR bhejein ya support se contact karein: {SUPPORT_USERNAME}",
                 chat_id=m.chat.id, message_id=wait_m.message_id, parse_mode="HTML"
             )
         return
@@ -1026,7 +1076,7 @@ def callbacks(call):
             "✦━━━━━━━━━━━━━━━✦\n\n"
             f"💲 <b>Balance:</b> ₹{bal:.2f}\n\n"
             "<blockquote>"
-            "📌 Scan QR · auto verify via UTR\n"
+            "📌 Pay via Instant UPI · auto verify via UTR\n"
             f"💯 Platform fee · {ZAPUPI_FEE_PERCENT:g}%\n"
             "⚡ One UTR = one credit only"
             "</blockquote>\n\n"
@@ -1039,13 +1089,13 @@ def callbacks(call):
         bot.send_message(call.message.chat.id, "✏️ <b>Enter custom deposit amount in ₹ (Minimum ₹10):</b>", parse_mode="HTML")
     elif call.data.startswith("setdep_"):
         amt = float(call.data.split("_")[1])
-        bot.answer_callback_query(call.id, "Generating QR...")
+        bot.answer_callback_query(call.id, "Creating Instant UPI Order...")
         send_zapupi_qr_card(call.message.chat.id, uid, amt)
     elif call.data.startswith("submit_utr_"):
         order_id = call.data.replace("submit_utr_", "")
         user_input_state[uid] = f"awaiting_utr_{order_id}"
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"🔢 <b>Send your 12-digit UTR / Ref Number for</b> <code>{order_id}</code>:", parse_mode="HTML")
+        bot.send_message(call.message.chat.id, f"🔢 <b>Send your exact 12-digit UTR Number for</b> <code>{order_id}</code>:", parse_mode="HTML")
     elif call.data.startswith("cancel_zap_"):
         pending_zap_orders.pop(uid, None)
         user_input_state.pop(uid, None)
@@ -1176,4 +1226,3 @@ while True:
     except Exception as e:
         print(f"Connection retry error: {e}")
         time.sleep(3)
-# --- END OF PART 6 ---
