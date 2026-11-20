@@ -475,20 +475,21 @@ def send_feedback_receipt_to_channel(buyer_id, stars, service_name, buyer_userna
         print(f"Feedback error: {e}")
 # --- END OF PART 3 ---
 def create_zapupi_order(uid, amount):
-    order_id = f"DEP-{uuid.uuid4().hex[:10].upper()}"
+    order_id = f"{int(time.time())}{str(uid)[-4:]}"
     fee = round(amount * (ZAPUPI_FEE_PERCENT / 100.0), 2)
     net_credit = round(amount - fee, 2)
-    pay_note = f"WorldSIM{uuid.uuid4().hex[:8].upper()}"
+    pay_note = f"WorldSIM{order_id[-6:]}"
 
     upi_id_to_use = MERCHANT_UPI_ID
     payment_url = None
     qr_url = None
+    api_err = ""
 
     try:
         payload = {
             "zap_key": ZAPUPI_API_KEY,
             "order_id": order_id,
-            "amount": str(amount),
+            "amount": str(int(amount) if float(amount).is_integer() else amount),
             "customer_mobile": "9876543210",
             "remark": pay_note
         }
@@ -503,8 +504,10 @@ def create_zapupi_order(uid, amount):
                 qr_url = data.get("qr_url") or data.get("qr_image")
             elif payment_url:
                 qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={urllib.parse.quote(payment_url)}"
+        else:
+            api_err = f"\n⚠️ <i>ZapUPI Info: {data.get('message', resp.text[:80])}</i>"
     except Exception as e:
-        print(f"ZapUPI create order error: {e}")
+        api_err = f"\n⚠️ <i>API Error: {str(e)[:60]}</i>"
 
     if not qr_url:
         upi_string = f"upi://pay?pa={upi_id_to_use}&pn={urllib.parse.quote(MERCHANT_NAME)}&am={amount:.2f}&cu=INR&tn={pay_note}"
@@ -518,6 +521,7 @@ def create_zapupi_order(uid, amount):
         "upi_id": upi_id_to_use,
         "pay_note": pay_note,
         "payment_url": payment_url,
+        "api_err": api_err,
         "created_at": time.time()
     }
     pending_zap_orders[uid] = order_obj
@@ -661,7 +665,7 @@ def send_zapupi_qr_card(chat_id, uid, amount):
         f"💰 You receive: <b>₹{order_obj['net_credit']:.2f}</b> (after 2% fee)\n"
         f"📲 UPI: <code>{order_obj['upi_id']}</code>\n"
         f"🏷️ Payment note: <code>{order_obj['pay_note']}</code>"
-        f"</blockquote>\n\n"
+        f"</blockquote>{order_obj.get('api_err', '')}\n\n"
         f"After payment, tap <b>Submit UTR / Txn ID</b> and send your UTR.\n"
         f"<i>UTR is matched once — same UTR cannot be reused.</i>"
     )
