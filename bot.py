@@ -12,7 +12,7 @@ from psycopg2 import pool
 from flask import Flask, request, jsonify, session, render_template_string
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "worldsim_hub_vip_super_secret_key_2026")
+app.secret_key = os.environ.get("SECRET_KEY", "kissu_num_services_secret_key_2026")
 
 # ================= CONFIGURATION =================
 BOT_TOKEN = "9109714291:AAFQny4eo62NZQy7TAnxXJQf3dG420gw2O4"
@@ -22,70 +22,67 @@ BASE_URL = "https://sastasms.pro/stubs/handler_api.php"
 ZAPUPI_API_KEY = "zap81dd07798ad86781b13f7e7e632d1486"
 ZAPUPI_FEE_PERCENT = 2.0
 MERCHANT_UPI_ID = "paytm.s4qvafn@pty"
-MERCHANT_NAME = "WorldSIM Hub"
+MERCHANT_NAME = "Kissu Num Services"
 
 DATABASE_URL = "postgresql://neondb_owner:npg_Hy4LqEYdOvk7@ep-weathered-river-bdjtcb91-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-ADMIN_EMAILS = ["ub22q@gmail.com", "worldsimhub@gmail.com"]
-ADMIN_UIDS = [8539777823, 9013970075]
+# Secret Single Main Admin (@ub2_q) — Hidden from all users
+SECRET_ADMIN_UID = 8539777823
+SECRET_ADMIN_EMAIL = "acchi.bachii@gmail.com"
+SECRET_ADMIN_USER = "@ub2_q"
 
-SUPPORT_USERNAME = "@Worldsim_hub"
-SUPPORT_LINK = "https://t.me/Worldsim_hub"
+# Customer Support
+SUPPORT_CHAT_ID = 8160944561
+SUPPORT_USERNAME = "@kissu_num"
+SUPPORT_LINK = "https://t.me/kissu_num"
+
 RECEIPT_CHANNEL_ID = -1004497033717
-
 PER_REFER_REWARD = 0.70
 TELEGRAM_MARGIN_INR = 10.0
+NEW_SERVICE_MARGIN_INR = 5.0
+
+# Fixed 8 Countries across all services
+ALLOWED_COUNTRIES = [
+    {"id": "6",   "name": "Indonesia",    "flag": "🇮🇩"},
+    {"id": "34",  "name": "Chile",        "flag": "🇨🇱"},
+    {"id": "12",  "name": "USA-2",        "flag": "🇺🇸"},
+    {"id": "26",  "name": "Colombia",     "flag": "🇨🇴"},
+    {"id": "107", "name": "South Africa", "flag": "🇿🇦"},
+    {"id": "36",  "name": "Canada",       "flag": "🇨🇦"},
+    {"id": "66",  "name": "Pakistan",     "flag": "🇵🇰"},
+    {"id": "22",  "name": "India",        "flag": "🇮🇳"}
+]
 
 SERVICES = {
-    "tg": {"name": "Telegram", "icon": "✈️"},
-    "wa": {"name": "WhatsApp", "icon": "💬"},
-    "go": {"name": "Google / Gmail", "icon": "🌐"},
-    "ig": {"name": "Instagram", "icon": "📸"},
-    "fb": {"name": "Facebook", "icon": "📘"}
+    "tg": {"name": "Telegram",       "icon": "✈️", "is_new": False},
+    "wa": {"name": "WhatsApp",       "icon": "💬", "is_new": False},
+    "go": {"name": "Google / Gmail", "icon": "🌐", "is_new": False},
+    "ig": {"name": "Instagram",      "icon": "📸", "is_new": False},
+    "fb": {"name": "Facebook",       "icon": "📘", "is_new": False},
+    "tw": {"name": "Twitter / X",    "icon": "🐦", "is_new": True},
+    "fu": {"name": "Snapchat",       "icon": "👻", "is_new": True},
+    "am": {"name": "Amazon",         "icon": "📦", "is_new": True},
+    "fl": {"name": "Flipkart",       "icon": "🛍️", "is_new": True},
+    "ts": {"name": "PayPal",         "icon": "💸", "is_new": True},
+    "ds": {"name": "Discord",        "icon": "🎮", "is_new": True},
+    "nf": {"name": "Netflix",        "icon": "🎬", "is_new": True},
+    "mm": {"name": "Microsoft",      "icon": "🪟", "is_new": True},
+    "ub": {"name": "Uber",           "icon": "🚗", "is_new": True},
+    "oi": {"name": "Tinder",         "icon": "🔥", "is_new": True}
 }
 
-CATALOG = {
-    "tg": [
-        {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 38.56},
-        {"id": "34",  "name": "Chile",          "flag": "🇨🇱", "price": 44.21},
-        {"id": "26",  "name": "Colombia",       "flag": "🇨🇴", "price": 46.00},
-        {"id": "3",   "name": "China",          "flag": "🇨🇳", "price": 56.00},
-        {"id": "36",  "name": "Canada",         "flag": "🇨🇦", "price": 65.00},
-        {"id": "8",   "name": "Kenya",          "flag": "🇰🇪", "price": 66.90},
-        {"id": "12",  "name": "USA",            "flag": "🇺🇸", "price": 70.00},
-        {"id": "81",  "name": "Nepal",          "flag": "🇳🇵", "price": 73.40},
-        {"id": "60",  "name": "Bangladesh",     "flag": "🇧🇩", "price": 75.32},
-        {"id": "22",  "name": "India",          "flag": "🇮🇳", "price": 86.75},
-        {"id": "16",  "name": "United Kingdom", "flag": "🇬🇧", "price": 140.00}
-    ],
-    "wa": [
-        {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 30.00},
-        {"id": "34",  "name": "Chile",          "flag": "🇨🇱", "price": 35.00},
-        {"id": "12",  "name": "USA-2",          "flag": "🇺🇸", "price": 40.00},
-        {"id": "26",  "name": "Colombia",       "flag": "🇨🇴", "price": 40.00},
-        {"id": "107", "name": "South Africa",   "flag": "🇿🇦", "price": 50.00},
-        {"id": "36",  "name": "Canada",         "flag": "🇨🇦", "price": 60.00},
-        {"id": "66",  "name": "Pakistan",       "flag": "🇵🇰", "price": 70.00},
-        {"id": "22",  "name": "India",          "flag": "🇮🇳", "price": 150.00}
-    ],
-    "go": [
-        {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 22.00},
-        {"id": "26",  "name": "Colombia",       "flag": "🇨🇴", "price": 25.00},
-        {"id": "12",  "name": "USA (Server 2)", "flag": "🇺🇸", "price": 28.00}
-    ],
-    "ig": [
-        {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 20.00},
-        {"id": "26",  "name": "Colombia",       "flag": "🇨🇴", "price": 24.00},
-        {"id": "12",  "name": "USA (Server 2)", "flag": "🇺🇸", "price": 28.00}
-    ],
-    "fb": [
-        {"id": "6",   "name": "Indonesia",      "flag": "🇮🇩", "price": 18.00},
-        {"id": "26",  "name": "Colombia",       "flag": "🇨🇴", "price": 22.00},
-        {"id": "12",  "name": "USA (Server 2)", "flag": "🇺🇸", "price": 25.00}
-    ]
+# Fixed Base Prices for Old 5 Services (exact previous prices)
+OLD_FIXED_PRICES = {
+    "tg": {"6": 38.56, "34": 44.21, "12": 70.00, "26": 46.00, "107": 68.00, "36": 65.00, "66": 75.00, "22": 86.75},
+    "wa": {"6": 30.00, "34": 35.00, "12": 40.00, "26": 40.00, "107": 50.00, "36": 60.00, "66": 70.00, "22": 150.00},
+    "go": {"6": 22.00, "34": 24.00, "12": 28.00, "26": 25.00, "107": 30.00, "36": 32.00, "66": 30.00, "22": 35.00},
+    "ig": {"6": 20.00, "34": 22.00, "12": 28.00, "26": 24.00, "107": 28.00, "36": 30.00, "66": 28.00, "22": 32.00},
+    "fb": {"6": 18.00, "34": 20.00, "12": 25.00, "26": 22.00, "107": 25.00, "36": 28.00, "66": 25.00, "22": 30.00}
 }
 
-tg_live_price_cache = {"time": 0, "prices": {}}
+DEFAULT_NEW_BASE_PRICES = {"6": 18.00, "34": 20.00, "12": 25.00, "26": 22.00, "107": 26.00, "36": 28.00, "66": 26.00, "22": 30.00}
+
+live_price_cache = {}
 pending_zap_orders = {}
 active_app_orders = {}
 # --- END OF PART 1 ---
@@ -106,6 +103,16 @@ def release_db_conn(conn):
 
 def hash_pw(pw):
     return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+
+def is_secret_admin(uid, email=""):
+    try:
+        if int(uid) == SECRET_ADMIN_UID:
+            return True
+    except Exception:
+        pass
+    if email and email.strip().lower() == SECRET_ADMIN_EMAIL:
+        return True
+    return False
 
 def init_db():
     conn = None
@@ -157,38 +164,47 @@ def init_db():
 
 init_db()
 
-def get_telegram_live_catalog():
+def fetch_sasta_live_prices(srv_code, margin):
     now = time.time()
-    if now - tg_live_price_cache["time"] < 300 and tg_live_price_cache["prices"]:
-        return tg_live_price_cache["prices"]
+    cached = live_price_cache.get(srv_code)
+    if cached and (now - cached["time"] < 300):
+        return cached["prices"]
     try:
-        r = requests.get(f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getPrices&service=tg", timeout=5)
+        r = requests.get(f"{BASE_URL}?api_key={SASTA_API_KEY}&action=getPrices&service={srv_code}", timeout=4)
         data = r.json()
         live_map = {}
         for cid, info in data.items():
-            if isinstance(info, dict) and "tg" in info:
-                raw_cost = float(info["tg"].get("cost", 0))
+            if isinstance(info, dict) and srv_code in info:
+                raw_cost = float(info[srv_code].get("cost", 0))
                 if raw_cost > 0:
-                    live_map[str(cid)] = round(raw_cost + TELEGRAM_MARGIN_INR, 2)
+                    live_map[str(cid)] = round(raw_cost + margin, 2)
         if live_map:
-            tg_live_price_cache["time"] = now
-            tg_live_price_cache["prices"] = live_map
+            live_price_cache[srv_code] = {"time": now, "prices": live_map}
             return live_map
     except Exception:
         pass
     return {}
 
 def get_full_catalog():
-    live_tg = get_telegram_live_catalog()
     out = {}
-    for srv, items in CATALOG.items():
-        srv_list = []
-        for c in items:
-            item = dict(c)
-            if srv == "tg" and item["id"] in live_tg:
-                item["price"] = live_tg[item["id"]]
-            srv_list.append(item)
-        out[srv] = srv_list
+    for srv_code, meta in SERVICES.items():
+        items = []
+        if srv_code == "tg":
+            live_tg = fetch_sasta_live_prices("tg", TELEGRAM_MARGIN_INR)
+            base_map = OLD_FIXED_PRICES["tg"]
+            for c in ALLOWED_COUNTRIES:
+                price = live_tg.get(c["id"], base_map.get(c["id"], 50.0))
+                items.append({"id": c["id"], "name": c["name"], "flag": c["flag"], "price": price})
+        elif not meta["is_new"]:
+            base_map = OLD_FIXED_PRICES[srv_code]
+            for c in ALLOWED_COUNTRIES:
+                items.append({"id": c["id"], "name": c["name"], "flag": c["flag"], "price": base_map[c["id"]]})
+        else:
+            live_new = fetch_sasta_live_prices(srv_code, NEW_SERVICE_MARGIN_INR)
+            for c in ALLOWED_COUNTRIES:
+                price = live_new.get(c["id"], round(DEFAULT_NEW_BASE_PRICES[c["id"]] + NEW_SERVICE_MARGIN_INR, 2))
+                items.append({"id": c["id"], "name": c["name"], "flag": c["flag"], "price": price})
+        out[srv_code] = items
     return out
 
 def update_bal(uid, amt):
@@ -222,7 +238,7 @@ def send_sale_receipt_tg(service_name, country_name, country_flag, phone_num, ac
     price_usd = round(price_inr / 88.0, 2)
     receipt = (
         "+--------------------------------------+\n"
-        "|   WORLDSIM HUB APP • SALE RECEIPT    |\n"
+        "|  KISSU NUM SERVICES • SALE RECEIPT   |\n"
         "+--------------------------------------+\n"
         "|                                      |\n"
         f"|  Status     : OTP DELIVERED OK       |\n"
@@ -261,13 +277,12 @@ def api_login():
             cur.execute("SELECT user_id, balance, COALESCE(purchased_count, 0), COALESCE(nickname, 'User'), password_hash FROM worldsim_users WHERE LOWER(email) = %s;", (email,))
             r = cur.fetchone()
             if not r:
-                return jsonify({"ok": False, "error": "Is Gmail se koi account nahi mila. Pehle Sign Up karein!"})
+                return jsonify({"ok": False, "error": "Is Gmail se koi account nahi mila. Pehle Create Account karein!"})
             if r[4] != hash_pw(password):
                 return jsonify({"ok": False, "error": "Password galat hai!"})
             uid = int(r[0])
             session["uid"] = uid
             session["email"] = email
-            is_admin = (email in ADMIN_EMAILS) or (uid in ADMIN_UIDS)
             return jsonify({
                 "ok": True,
                 "user": {
@@ -276,7 +291,7 @@ def api_login():
                     "name": r[3] or email.split("@")[0],
                     "balance": round(float(r[1]), 2),
                     "buys": int(r[2]),
-                    "is_admin": is_admin
+                    "is_admin": is_secret_admin(uid, email)
                 }
             })
     except Exception as e:
@@ -306,27 +321,27 @@ def api_signup():
             if cur.fetchone():
                 return jsonify({"ok": False, "error": "Yeh Gmail pehle se registered hai! Login karein."})
 
-            if tg_id_raw.isdigit():
+            if email == SECRET_ADMIN_EMAIL:
+                uid = SECRET_ADMIN_UID
+            elif tg_id_raw.isdigit():
                 uid = int(tg_id_raw)
-                cur.execute("SELECT balance, COALESCE(purchased_count, 0), COALESCE(email, '') FROM worldsim_users WHERE user_id = %s;", (uid,))
-                existing = cur.fetchone()
-                if existing:
-                    if existing[2]:
-                        return jsonify({"ok": False, "error": "Is Telegram ID par pehle se ek Gmail linked hai!"})
-                    cur.execute("UPDATE worldsim_users SET email = %s, password_hash = %s, nickname = %s WHERE user_id = %s;", (email, hash_pw(password), name, uid))
-                    bal, buys = float(existing[0]), int(existing[1])
-                else:
-                    cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep, username, nickname, email, password_hash) VALUES (%s, 0.0, 0, 0, FALSE, FALSE, '', %s, %s, %s);", (uid, name, email, hash_pw(password)))
-                    bal, buys = 0.0, 0
             else:
                 uid = int(str(int(time.time()))[-6:] + str(uuid.uuid4().int)[:4])
+
+            cur.execute("SELECT balance, COALESCE(purchased_count, 0), COALESCE(email, '') FROM worldsim_users WHERE user_id = %s;", (uid,))
+            existing = cur.fetchone()
+            if existing:
+                if existing[2] and existing[2].lower() != email:
+                    return jsonify({"ok": False, "error": "Is ID par pehle se ek Gmail linked hai!"})
+                cur.execute("UPDATE worldsim_users SET email = %s, password_hash = %s, nickname = %s WHERE user_id = %s;", (email, hash_pw(password), name, uid))
+                bal, buys = float(existing[0]), int(existing[1])
+            else:
                 cur.execute("INSERT INTO worldsim_users (user_id, balance, referred_by, purchased_count, ref_paid, pending_dep, username, nickname, email, password_hash) VALUES (%s, 0.0, 0, 0, FALSE, FALSE, '', %s, %s, %s);", (uid, name, email, hash_pw(password)))
                 bal, buys = 0.0, 0
 
         conn.commit()
         session["uid"] = uid
         session["email"] = email
-        is_admin = (email in ADMIN_EMAILS) or (uid in ADMIN_UIDS)
         return jsonify({
             "ok": True,
             "user": {
@@ -335,7 +350,7 @@ def api_signup():
                 "name": name,
                 "balance": round(bal, 2),
                 "buys": buys,
-                "is_admin": is_admin
+                "is_admin": is_secret_admin(uid, email)
             }
         })
     except Exception as e:
@@ -364,7 +379,6 @@ def api_me():
                 session.clear()
                 return jsonify({"ok": False})
             email = r[3]
-            is_admin = (email in ADMIN_EMAILS) or (int(uid) in ADMIN_UIDS)
             return jsonify({
                 "ok": True,
                 "user": {
@@ -373,8 +387,9 @@ def api_me():
                     "name": r[2],
                     "balance": round(float(r[0]), 2),
                     "buys": int(r[1]),
-                    "is_admin": is_admin
+                    "is_admin": is_secret_admin(uid, email)
                 },
+                "services": SERVICES,
                 "catalog": get_full_catalog(),
                 "orders": active_app_orders.get(int(uid), [])
             })
@@ -400,7 +415,7 @@ def api_deposit_create():
     order_id = f"{int(time.time())}{str(uid)[-4:]}"
     fee = round(amount * (ZAPUPI_FEE_PERCENT / 100.0), 2)
     net_credit = round(amount - fee, 2)
-    pay_note = f"WorldSIM{order_id[-6:]}"
+    pay_note = f"KissuNum{order_id[-6:]}"
 
     payment_url = None
     upi_intent_str = None
@@ -500,15 +515,14 @@ def api_deposit_verify():
 
     pending_zap_orders.pop(uid, None)
     new_bal = update_bal(uid, order_obj["net_credit"])
-    for adm in ADMIN_UIDS:
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                json={"chat_id": adm, "text": f"💰 <b>WorldSIM Hub App — Instant UPI Deposit!</b>\nUser ID: <code>{uid}</code>\nPaid: ₹{order_obj['amount']:.2f} | Added: ₹{order_obj['net_credit']:.2f}\nUTR: <code>{utr}</code>", "parse_mode": "HTML"},
-                timeout=5
-            )
-        except Exception:
-            pass
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={"chat_id": SECRET_ADMIN_UID, "text": f"💰 <b>Kissu Num Services — Instant Deposit!</b>\nUser ID: <code>{uid}</code>\nPaid: ₹{order_obj['amount']:.2f} | Added: ₹{order_obj['net_credit']:.2f}\nUTR: <code>{utr}</code>", "parse_mode": "HTML"},
+            timeout=5
+        )
+    except Exception:
+        pass
     return jsonify({"ok": True, "new_balance": new_bal, "credited": order_obj["net_credit"]})
 
 @app.route("/api/otp/buy", methods=["POST"])
@@ -653,7 +667,7 @@ def api_otp_cancel(act_id):
 def api_admin_users():
     uid = session.get("uid")
     email = session.get("email", "")
-    if not uid or (email not in ADMIN_EMAILS and int(uid) not in ADMIN_UIDS):
+    if not is_secret_admin(uid or 0, email):
         return jsonify({"ok": False, "error": "Unauthorized"})
     conn = None
     try:
@@ -671,7 +685,7 @@ def api_admin_users():
 def api_admin_balance():
     uid = session.get("uid")
     email = session.get("email", "")
-    if not uid or (email not in ADMIN_EMAILS and int(uid) not in ADMIN_UIDS):
+    if not is_secret_admin(uid or 0, email):
         return jsonify({"ok": False, "error": "Unauthorized"})
     data = request.json or {}
     target_uid = int(data.get("target_uid", 0))
@@ -684,47 +698,51 @@ APP_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#090d16">
-<title>WorldSIM Hub — Instant Virtual OTP</title>
+<meta name="theme-color" content="#140d1f">
+<title>Kissu Num Services — Instant Virtual OTP</title>
 <style>
   :root {
-    --bg: #090d16; --card: #121826; --card2: #192236; --border: rgba(255,255,255,0.08);
-    --primary: #3b82f6; --accent: #10b981; --danger: #ef4444; --text: #f8fafc; --muted: #94a3b8;
+    --bg: #130b1c; --card: #1e132c; --card2: #28193b; --border: rgba(244,114,182,0.18);
+    --primary: #ec4899; --accent: #a855f7; --green: #10b981; --danger: #fb7185; --text: #fdf2f8; --muted: #d8b4fe;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 84px; }
-  .header { position: sticky; top: 0; z-index: 50; background: rgba(9,13,22,0.9); backdrop-filter: blur(12px); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-  .brand { font-size: 18px; font-weight: 800; letter-spacing: 0.3px; display: flex; align-items: center; gap: 8px; }
-  .brand span { color: var(--primary); }
-  .bal-pill { background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(59,130,246,0.18)); border: 1px solid rgba(16,185,129,0.4); padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; color: #34d399; }
-  .container { padding: 16px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
-  .hero-card { background: linear-gradient(135deg, #16223b 0%, #0f172a 100%); border: 1px solid rgba(59,130,246,0.3); border-radius: 20px; padding: 20px; margin-bottom: 16px; position: relative; overflow: hidden; }
-  .hero-bal { font-size: 32px; font-weight: 800; margin: 6px 0 12px; color: #fff; }
-  .badge { display: inline-block; font-size: 11px; padding: 4px 10px; border-radius: 99px; background: rgba(59,130,246,0.2); color: #93c5fd; font-weight: 600; }
-  .btn { width: 100%; padding: 13px; border: none; border-radius: 13px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+  body { background: radial-gradient(circle at top, #27133a 0%, #130b1c 65%); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 86px; }
+  .header { position: sticky; top: 0; z-index: 50; background: rgba(19,11,28,0.92); backdrop-filter: blur(12px); padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .brand { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .brand span { background: linear-gradient(90deg, #f472b6, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .bal-pill { background: linear-gradient(135deg, rgba(236,72,153,0.22), rgba(168,85,247,0.22)); border: 1px solid rgba(244,114,182,0.45); padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 800; color: #f9a8d4; }
+  .container { padding: 15px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+  .hero-card { background: linear-gradient(135deg, #32184c 0%, #1d112b 100%); border: 1px solid rgba(244,114,182,0.38); border-radius: 22px; padding: 18px; margin-bottom: 15px; position: relative; overflow: hidden; }
+  .mascot-badge { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .mascot-avatar { width: 54px; height: 54px; border-radius: 16px; background: linear-gradient(135deg, #f472b6, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(236,72,153,0.4); border: 2px solid #fbcfe8; flex-shrink: 0; }
+  .hero-bal { font-size: 32px; font-weight: 800; margin: 4px 0 10px; color: #fff; }
+  .badge { display: inline-block; font-size: 11px; padding: 4px 10px; border-radius: 99px; background: rgba(244,114,182,0.2); color: #f9a8d4; font-weight: 700; }
+  .btn { width: 100%; padding: 13px; border: none; border-radius: 14px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
   .btn:active { transform: scale(0.98); }
-  .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); color: #fff; }
-  .btn-success { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
-  .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .btn-primary { background: linear-gradient(135deg, #ec4899, #a855f7); color: #fff; box-shadow: 0 4px 14px rgba(236,72,153,0.35); }
+  .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+  .btn-danger { background: rgba(251,113,133,0.16); color: #fda4af; border: 1px solid rgba(251,113,133,0.35); }
   .btn-ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  input { width: 100%; padding: 13px 14px; background: #0c1220; border: 1px solid var(--border); border-radius: 12px; color: #fff; font-size: 14px; margin-bottom: 10px; outline: none; }
+  input { width: 100%; padding: 13px 14px; background: #12091c; border: 1px solid var(--border); border-radius: 13px; color: #fff; font-size: 14px; margin-bottom: 10px; outline: none; }
   input:focus { border-color: var(--primary); }
-  .srv-btn { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: left; color: #fff; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
-  .srv-btn.active { border-color: var(--primary); background: rgba(59,130,246,0.12); }
-  .country-row { display: flex; justify-content: space-between; align-items: center; background: var(--card2); border: 1px solid var(--border); padding: 12px 14px; border-radius: 14px; margin-bottom: 8px; }
-  .price-tag { background: rgba(16,185,129,0.15); color: #34d399; padding: 6px 12px; border-radius: 10px; font-weight: 800; font-size: 13px; border: 1px solid rgba(16,185,129,0.3); cursor: pointer; }
-  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(18,24,38,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 4px 12px; z-index: 60; }
+  .srv-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; scrollbar-width: none; }
+  .srv-scroll::-webkit-scrollbar { display: none; }
+  .srv-chip { flex: 0 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 10px 14px; color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .srv-chip.active { background: linear-gradient(135deg, #ec4899, #a855f7); border-color: #f9a8d4; color: #fff; }
+  .country-row { display: flex; justify-content: space-between; align-items: center; background: var(--card2); border: 1px solid var(--border); padding: 12px 14px; border-radius: 15px; margin-bottom: 8px; }
+  .price-tag { background: linear-gradient(135deg, rgba(236,72,153,0.22), rgba(168,85,247,0.22)); color: #f9a8d4; padding: 7px 13px; border-radius: 11px; font-weight: 800; font-size: 13px; border: 1px solid rgba(244,114,182,0.4); cursor: pointer; }
+  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(24,14,36,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 4px 12px; z-index: 60; }
   .nav-item { background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 10px; }
-  .nav-item.active { color: var(--primary); }
+  .nav-item.active { color: #f472b6; }
   .nav-icon { font-size: 19px; }
   .hidden { display: none !important; }
-  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #1e293b; border: 1px solid var(--primary); color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-  .otp-box { background: #090d16; border: 1px dashed var(--accent); padding: 12px; border-radius: 12px; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #34d399; margin: 10px 0; }
+  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #28193b; border: 1px solid #f472b6; color: #fff; padding: 10px 18px; border-radius: 13px; font-size: 13px; font-weight: 700; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .otp-box { background: #12091c; border: 1px dashed #f472b6; padding: 12px; border-radius: 12px; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #34d399; margin: 10px 0; }
   .rule-item { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .rule-item h4 { font-size: 13px; color: #93c5fd; margin-bottom: 3px; }
+  .rule-item h4 { font-size: 13px; color: #f9a8d4; margin-bottom: 3px; }
   .rule-item p { font-size: 12px; color: var(--muted); line-height: 1.45; }
 </style>
 </head>
@@ -733,11 +751,11 @@ APP_HTML = """<!DOCTYPE html>
 <div id="toast" class="toast hidden"></div>
 
 <!-- AUTH SCREEN -->
-<div id="auth-screen" class="container" style="padding-top: 40px;">
-  <div style="text-align:center; margin-bottom:24px;">
-    <div style="font-size:40px; margin-bottom:8px;">🌐</div>
-    <h2 style="font-size:24px; font-weight:800;">WorldSIM <span style="color:#3b82f6;">Hub</span></h2>
-    <p style="color:var(--muted); font-size:13px; margin-top:4px;">Instant Virtual Numbers & SMS Verification</p>
+<div id="auth-screen" class="container" style="padding-top: 34px;">
+  <div style="text-align:center; margin-bottom:22px;">
+    <div style="width:76px; height:76px; margin:0 auto 10px; border-radius:24px; background:linear-gradient(135deg,#f472b6,#a855f7); display:flex; align-items:center; justify-content:center; font-size:42px; border:2px solid #fbcfe8; box-shadow:0 8px 25px rgba(236,72,153,0.4);">🎀</div>
+    <h2 style="font-size:23px; font-weight:800;">Kissu Num <span style="color:#f472b6;">Services</span></h2>
+    <p style="color:var(--muted); font-size:13px; margin-top:4px;">Cute, Fast & Instant Virtual OTP Store ✨</p>
   </div>
 
   <div class="card">
@@ -749,11 +767,11 @@ APP_HTML = """<!DOCTYPE html>
     <div id="login-form">
       <input type="email" id="login-email" placeholder="Enter your Gmail (example@gmail.com)">
       <input type="password" id="login-pass" placeholder="Enter Password">
-      <button class="btn btn-primary" onclick="doLogin()">🔐 Login to App</button>
+      <button class="btn btn-primary" onclick="doLogin()">🎀 Login to Kissu Num</button>
     </div>
 
     <div id="signup-form" class="hidden">
-      <input type="text" id="reg-name" placeholder="Your Name / Nickname">
+      <input type="text" id="reg-name" placeholder="Your Cute Nickname">
       <input type="email" id="reg-email" placeholder="Your Gmail (example@gmail.com)">
       <input type="password" id="reg-pass" placeholder="Create Password">
       <input type="number" id="reg-tgid" placeholder="Old Telegram User ID (Optional - sync balance)">
@@ -765,15 +783,20 @@ APP_HTML = """<!DOCTYPE html>
 <!-- MAIN APP -->
 <div id="main-app" class="hidden">
   <div class="header">
-    <div class="brand">🌐 WorldSIM <span>Hub</span></div>
+    <div class="brand">🎀 Kissu Num <span>Services</span></div>
     <div class="bal-pill" id="top-bal">₹0.00</div>
   </div>
 
   <!-- HOME VIEW -->
   <div id="view-home" class="container">
     <div class="hero-card">
-      <span class="badge">🔒 Verified Instant OTP Store</span>
-      <div style="margin-top:10px; font-size:13px; color:var(--muted);" id="user-greeting">Welcome back!</div>
+      <div class="mascot-badge">
+        <div class="mascot-avatar">👧🏻</div>
+        <div>
+          <span class="badge">✨ Verified Instant OTP</span>
+          <div style="margin-top:5px; font-size:13px; color:var(--muted);" id="user-greeting">Welcome back!</div>
+        </div>
+      </div>
       <div class="hero-bal" id="hero-bal">₹0.00</div>
       <div style="font-size:12px; color:var(--muted); margin-bottom:14px;" id="user-meta">ID: —</div>
       <div class="grid-2">
@@ -783,39 +806,31 @@ APP_HTML = """<!DOCTYPE html>
     </div>
 
     <div class="card">
-      <h3 style="font-size:15px; margin-bottom:12px;">⚡ Quick Platforms</h3>
+      <h3 style="font-size:15px; margin-bottom:12px;">🌸 Popular Services</h3>
       <div class="grid-2">
-        <button class="srv-btn" onclick="openService('tg')">✈️ Telegram</button>
-        <button class="srv-btn" onclick="openService('wa')">💬 WhatsApp</button>
-        <button class="srv-btn" onclick="openService('go')">🌐 Google</button>
-        <button class="srv-btn" onclick="openService('ig')">📸 Instagram</button>
+        <button class="btn btn-ghost" onclick="openService('wa')">💬 WhatsApp</button>
+        <button class="btn btn-ghost" onclick="openService('tg')">✈️ Telegram</button>
+        <button class="btn btn-ghost" onclick="openService('go')">🌐 Google</button>
+        <button class="btn btn-ghost" onclick="openService('ig')">📸 Instagram</button>
       </div>
     </div>
 
     <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
       <div>
-        <div style="font-weight:700; font-size:14px;">🛠️ Need Help?</div>
-        <div style="font-size:12px; color:var(--muted);">24/7 Support: @Worldsim_hub</div>
+        <div style="font-weight:700; font-size:14px;">💌 Customer Support</div>
+        <div style="font-size:12px; color:var(--muted);">Chat with @kissu_num</div>
       </div>
-      <a href="https://t.me/Worldsim_hub" target="_blank" class="btn btn-ghost" style="width:auto; padding:8px 14px;">Contact</a>
+      <a href="https://t.me/kissu_num" target="_blank" class="btn btn-primary" style="width:auto; padding:9px 15px;">Support</a>
     </div>
 
-    <button id="admin-nav-btn" class="btn btn-ghost hidden" style="margin-bottom:10px; border-color:#3b82f6;" onclick="navTo('admin')">👑 Open Admin Panel</button>
+    <button id="admin-nav-btn" class="btn btn-ghost hidden" style="margin-bottom:10px; border-color:#f472b6;" onclick="navTo('admin')">👑 Secret Admin Control</button>
     <button class="btn btn-danger" onclick="doLogout()">🚪 Logout</button>
   </div>
 
   <!-- STORE VIEW -->
   <div id="view-store" class="container hidden">
-    <div class="grid-3" style="margin-bottom:12px;">
-      <button id="srv-tg" class="srv-btn active" onclick="openService('tg')">✈️ TG</button>
-      <button id="srv-wa" class="srv-btn" onclick="openService('wa')">💬 WA</button>
-      <button id="srv-go" class="srv-btn" onclick="openService('go')">🌐 GO</button>
-    </div>
-    <div class="grid-2" style="margin-bottom:12px;">
-      <button id="srv-ig" class="srv-btn" onclick="openService('ig')">📸 Instagram</button>
-      <button id="srv-fb" class="srv-btn" onclick="openService('fb')">📘 Facebook</button>
-    </div>
-    <input type="text" id="country-search" placeholder="🔍 Search country name..." oninput="renderCountries()">
+    <div id="srv-tabs" class="srv-scroll"></div>
+    <input type="text" id="country-search" placeholder="🔍 Search country (Indonesia, India, USA-2...)" oninput="renderCountries()">
     <div id="country-list"></div>
   </div>
 
@@ -865,14 +880,14 @@ APP_HTML = """<!DOCTYPE html>
       <div class="rule-item"><h4>3. No Re-logins</h4><p>Sessions are permanently closed after purchase. One login only.</p></div>
       <div class="rule-item"><h4>4. Premium Accounts</h4><p>Cheap quality accounts may last only 1–2 days. Buy at your own risk.</p></div>
       <div class="rule-item"><h4>5. No Longevity Guarantee</h4><p>We do not guarantee account lifespan, 2FA status or spam block status.</p></div>
-      <div class="rule-item" style="border:none; margin:0; padding:0;"><h4>6. Liability</h4><p>Use at your own risk. Developed by - kissu (achi bachi)</p></div>
+      <div class="rule-item" style="border:none; margin:0; padding:0;"><h4>6. Liability</h4><p>Use at your own risk. Support: @kissu_num</p></div>
     </div>
   </div>
 
-  <!-- ADMIN VIEW -->
+  <!-- SECRET ADMIN VIEW -->
   <div id="view-admin" class="container hidden">
     <div class="card">
-      <h3 style="font-size:16px; margin-bottom:10px;">👑 Admin Balance Manager</h3>
+      <h3 style="font-size:16px; margin-bottom:10px;">👑 Secret Admin Balance Manager</h3>
       <input type="number" id="adm-uid" placeholder="User ID">
       <input type="number" id="adm-amt" placeholder="Amount (+ to add, - to cut)">
       <button class="btn btn-primary" onclick="adminUpdateBal()">Update User Balance</button>
@@ -893,7 +908,7 @@ APP_HTML = """<!DOCTYPE html>
 </div>
 
 <script>
-let state = { user: null, catalog: {}, orders: [], currentSrv: 'tg', activeDepOrderId: '' };
+let state = { user: null, services: {}, catalog: {}, orders: [], currentSrv: 'wa', activeDepOrderId: '' };
 
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -939,14 +954,14 @@ async function initApp() {
     document.getElementById('main-app').classList.add('hidden');
     return;
   }
-  state.user = r.user; state.catalog = r.catalog; state.orders = r.orders || [];
+  state.user = r.user; state.services = r.services || {}; state.catalog = r.catalog || {}; state.orders = r.orders || [];
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
   updateBalUI(r.user.balance);
-  document.getElementById('user-greeting').textContent = `Welcome, ${r.user.name} (${r.user.email})`;
+  document.getElementById('user-greeting').textContent = `Hi, ${r.user.name} (${r.user.email})`;
   document.getElementById('user-meta').textContent = `Account ID: ${r.user.uid} • Purchases: ${r.user.buys}`;
   if (r.user.is_admin) document.getElementById('admin-nav-btn').classList.remove('hidden');
-  renderCountries(); renderOrders();
+  renderServiceTabs(); renderCountries(); renderOrders();
 }
 
 function updateBalUI(b) {
@@ -964,9 +979,17 @@ function navTo(view) {
   if (view === 'admin') loadAdminUsers();
 }
 
+function renderServiceTabs() {
+  const box = document.getElementById('srv-tabs');
+  box.innerHTML = Object.keys(state.services).map(k => {
+    const s = state.services[k];
+    return `<button class="srv-chip ${state.currentSrv === k ? 'active' : ''}" onclick="openService('${k}')">${s.icon} ${s.name}</button>`;
+  }).join('');
+}
+
 function openService(srv) {
   state.currentSrv = srv;
-  ['tg','wa','go','ig','fb'].forEach(s => document.getElementById('srv-'+s).classList.toggle('active', s === srv));
+  renderServiceTabs();
   navTo('store');
   renderCountries();
 }
@@ -1001,11 +1024,11 @@ function renderOrders() {
     const secs = String(left%60).padStart(2,'0');
     return `
     <div class="card">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
         <b>${o.service} • ${o.country}</b>
         <span class="badge">${o.status === 'waiting' ? `⏳ ${mins}:${secs}` : o.status.toUpperCase()}</span>
       </div>
-      <div style="font-size:16px; font-weight:800; color:#93c5fd; margin-bottom:6px;">+${o.phone}</div>
+      <div style="font-size:16px; font-weight:800; color:#f9a8d4; margin-bottom:6px;">+${o.phone}</div>
       ${o.otp ? `<div class="otp-box">${o.otp}</div>` : ''}
       ${o.status === 'waiting' ? `<button class="btn btn-danger" style="margin-top:8px;" onclick="cancelOrder('${o.activation_id}')">❌ Cancel & Refund ₹${o.price}</button>` : ''}
     </div>`;
@@ -1027,7 +1050,7 @@ setInterval(async () => {
   for (let o of state.orders) {
     if (o.status === 'waiting') {
       changed = true;
-            const r = await fetch('/api/otp/status/' + o.activation_id).then(x=>x.json());
+      const r = await fetch('/api/otp/status/' + o.activation_id).then(x=>x.json());
       if (r.ok && r.order) {
         Object.assign(o, r.order);
         if (r.new_balance !== undefined) updateBalUI(r.new_balance);
