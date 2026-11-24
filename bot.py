@@ -26,22 +26,18 @@ MERCHANT_NAME = "Kissu Num Services"
 
 DATABASE_URL = "postgresql://neondb_owner:npg_Hy4LqEYdOvk7@ep-weathered-river-bdjtcb91-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
-# Secret Single Main Admin (@ub2_q) — Hidden from all users
 SECRET_ADMIN_UID = 8539777823
 SECRET_ADMIN_EMAIL = "acchi.bachii@gmail.com"
 SECRET_ADMIN_USER = "@ub2_q"
 
-# Customer Support
 SUPPORT_CHAT_ID = 8160944561
 SUPPORT_USERNAME = "@kissu_num"
 SUPPORT_LINK = "https://t.me/kissu_num"
 
 RECEIPT_CHANNEL_ID = -1004497033717
-PER_REFER_REWARD = 0.70
 TELEGRAM_MARGIN_INR = 10.0
 NEW_SERVICE_MARGIN_INR = 5.0
 
-# Fixed 8 Countries across all services
 ALLOWED_COUNTRIES = [
     {"id": "6",   "name": "Indonesia",    "flag": "🇮🇩"},
     {"id": "34",  "name": "Chile",        "flag": "🇨🇱"},
@@ -71,7 +67,6 @@ SERVICES = {
     "oi": {"name": "Tinder",         "icon": "🔥", "is_new": True}
 }
 
-# Fixed Base Prices for Old 5 Services (exact previous prices)
 OLD_FIXED_PRICES = {
     "tg": {"6": 38.56, "34": 44.21, "12": 70.00, "26": 46.00, "107": 68.00, "36": 65.00, "66": 75.00, "22": 86.75},
     "wa": {"6": 30.00, "34": 35.00, "12": 40.00, "26": 40.00, "107": 50.00, "36": 60.00, "66": 70.00, "22": 150.00},
@@ -206,7 +201,7 @@ def get_full_catalog():
                 items.append({"id": c["id"], "name": c["name"], "flag": c["flag"], "price": price})
         out[srv_code] = items
     return out
-
+# --- END OF PART 2 ---
 def update_bal(uid, amt):
     uid = int(uid)
     amt = float(amt)
@@ -261,7 +256,7 @@ def send_sale_receipt_tg(service_name, country_name, country_flag, phone_num, ac
         )
     except Exception:
         pass
-# --- END OF PART 2 ---
+
 @app.route("/api/auth/login", methods=["POST"])
 def api_login():
     data = request.json or {}
@@ -524,7 +519,7 @@ def api_deposit_verify():
     except Exception:
         pass
     return jsonify({"ok": True, "new_balance": new_bal, "credited": order_obj["net_credit"]})
-
+# --- END OF PART 4 ---
 @app.route("/api/otp/buy", methods=["POST"])
 def api_otp_buy():
     uid = session.get("uid")
@@ -692,7 +687,7 @@ def api_admin_balance():
     delta = float(data.get("delta", 0))
     new_bal = update_bal(target_uid, delta)
     return jsonify({"ok": True, "new_balance": new_bal})
-# --- END OF PART 4 ---
+# --- END OF PART 5 ---
 APP_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -747,10 +742,9 @@ APP_HTML = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-
+# --- END OF PART 6 ---
 <div id="toast" class="toast hidden"></div>
 
-<!-- AUTH SCREEN -->
 <div id="auth-screen" class="container" style="padding-top: 34px;">
   <div style="text-align:center; margin-bottom:22px;">
     <div style="width:76px; height:76px; margin:0 auto 10px; border-radius:24px; background:linear-gradient(135deg,#f472b6,#a855f7); display:flex; align-items:center; justify-content:center; font-size:42px; border:2px solid #fbcfe8; box-shadow:0 8px 25px rgba(236,72,153,0.4);">🎀</div>
@@ -780,14 +774,12 @@ APP_HTML = """<!DOCTYPE html>
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="main-app" class="hidden">
   <div class="header">
     <div class="brand">🎀 Kissu Num <span>Services</span></div>
     <div class="bal-pill" id="top-bal">₹0.00</div>
   </div>
 
-  <!-- HOME VIEW -->
   <div id="view-home" class="container">
     <div class="hero-card">
       <div class="mascot-badge">
@@ -827,14 +819,12 @@ APP_HTML = """<!DOCTYPE html>
     <button class="btn btn-danger" onclick="doLogout()">🚪 Logout</button>
   </div>
 
-  <!-- STORE VIEW -->
   <div id="view-store" class="container hidden">
     <div id="srv-tabs" class="srv-scroll"></div>
     <input type="text" id="country-search" placeholder="🔍 Search country (Indonesia, India, USA-2...)" oninput="renderCountries()">
     <div id="country-list"></div>
   </div>
 
-  <!-- RECHARGE VIEW -->
   <div id="view-recharge" class="container hidden">
     <div class="card">
       <h3 style="font-size:16px; margin-bottom:6px;">🇮🇳 Instant UPI Deposit</h3>
@@ -865,13 +855,11 @@ APP_HTML = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- ORDERS VIEW -->
   <div id="view-orders" class="container hidden">
     <h3 style="font-size:16px; margin-bottom:12px;">📑 Active & Recent Numbers</h3>
     <div id="orders-list"></div>
   </div>
 
-  <!-- TERMS VIEW -->
   <div id="view-terms" class="container hidden">
     <div class="card">
       <h3 style="font-size:16px; margin-bottom:12px;">📋 Terms of Service</h3>
@@ -884,7 +872,6 @@ APP_HTML = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- SECRET ADMIN VIEW -->
   <div id="view-admin" class="container hidden">
     <div class="card">
       <h3 style="font-size:16px; margin-bottom:10px;">👑 Secret Admin Balance Manager</h3>
@@ -906,7 +893,7 @@ APP_HTML = """<!DOCTYPE html>
     <button class="nav-item" id="nav-terms" onclick="navTo('terms')"><span class="nav-icon">📋</span>Terms</button>
   </div>
 </div>
-
+<!-- END OF PART 7 -->
 <script>
 let state = { user: null, services: {}, catalog: {}, orders: [], currentSrv: 'wa', activeDepOrderId: '' };
 
@@ -1024,7 +1011,7 @@ function renderOrders() {
     const secs = String(left%60).padStart(2,'0');
     return `
     <div class="card">
-            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
         <b>${o.service} • ${o.country}</b>
         <span class="badge">${o.status === 'waiting' ? `⏳ ${mins}:${secs}` : o.status.toUpperCase()}</span>
       </div>
@@ -1115,4 +1102,4 @@ def index():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-# --- END OF PART 5 ---
+# --- END OF PART 8 ---
