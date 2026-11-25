@@ -1,14 +1,12 @@
-from bot import app as flask_app
+import os
+from bot import app
 
-def app(environ, start_response):
-    path = environ.get("PATH_INFO", "")
-    if path in ("", "/", "/index.html"):
-        with open("index.html", "rb") as f:
-            html = f.read()
-        start_response("200 OK", [
-            ("Content-Type", "text/html; charset=utf-8"),
-            ("Content-Length", str(len(html)))
-        ])
-        return [html]
-    return flask_app(environ, start_response)
-    
+@app.route("/")
+def index():
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "index.html missing in GitHub repo!", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
