@@ -21,7 +21,6 @@ ZAPUPI_SECRET = os.environ.get("ZAPUPI_SECRET", "")
 SECRET_ADMIN_EMAIL = "acchi.bachii@gmail.com"
 SECRET_ADMIN_ID = 8539777823
 SUPPORT_HANDLE = "@kissu_num"
-SUPPORT_ID = "8160944561"
 
 def get_db_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
@@ -84,6 +83,7 @@ def is_admin(uid) -> bool:
         return int(uid) == SECRET_ADMIN_ID
     except Exception:
         return False
+
 COUNTRIES = [
     {"id": "6", "name": "Indonesia", "flag": "🇮🇩", "mult": 1.0},
     {"id": "151", "name": "Chile", "flag": "🇨🇱", "mult": 1.1},
@@ -95,22 +95,33 @@ COUNTRIES = [
     {"id": "22", "name": "India", "flag": "🇮🇳", "mult": 1.2}
 ]
 
+# Telegram & WhatsApp exact bot pricing, baaki sab SastaSMS base + ₹5 margin
 SERVICES_CONFIG = {
-    "tg": {"name": "Telegram", "icon": "✈️", "base": 25, "margin": 10},
-    "wa": {"name": "WhatsApp", "icon": "💬", "base": 35, "margin": 0},
-    "go": {"name": "Google / Gmail", "icon": "📧", "base": 18, "margin": 0},
-    "ig": {"name": "Instagram", "icon": "📸", "base": 16, "margin": 0},
-    "fb": {"name": "Facebook", "icon": "📘", "base": 15, "margin": 0},
-    "tw": {"name": "Twitter / X", "icon": "🐦", "base": 14, "margin": 5},
-    "fu": {"name": "Snapchat", "icon": "👻", "base": 15, "margin": 5},
-    "am": {"name": "Amazon", "icon": "📦", "base": 16, "margin": 5},
-    "xi": {"name": "Flipkart", "icon": "🛍️", "base": 15, "margin": 5},
-    "ts": {"name": "PayPal", "icon": "💳", "base": 22, "margin": 5},
-    "ds": {"name": "Discord", "icon": "🎮", "base": 14, "margin": 5},
-    "nf": {"name": "Netflix", "icon": "🎬", "base": 20, "margin": 5},
-    "mm": {"name": "Microsoft", "icon": "🪟", "base": 15, "margin": 5},
-    "ub": {"name": "Uber", "icon": "🚕", "base": 15, "margin": 5},
-    "oi": {"name": "Tinder", "icon": "🔥", "base": 18, "margin": 5}
+    "tg": {"name": "Telegram", "icon": "✈️", "fixed": True, "prices": {"6": 35, "151": 38, "187": 42, "33": 38, "31": 40, "36": 45, "66": 36, "22": 42}},
+    "wa": {"name": "WhatsApp", "icon": "💬", "fixed": True, "prices": {"6": 35, "151": 40, "187": 45, "33": 38, "31": 42, "36": 48, "66": 38, "22": 45}},
+    "go": {"name": "Google / Gmail", "icon": "📧", "base": 14, "margin": 5},
+    "ig": {"name": "Instagram", "icon": "📸", "base": 12, "margin": 5},
+    "fb": {"name": "Facebook", "icon": "📘", "base": 12, "margin": 5},
+    "tw": {"name": "Twitter / X", "icon": "🐦", "base": 13, "margin": 5},
+    "fu": {"name": "Snapchat", "icon": "👻", "base": 14, "margin": 5},
+    "am": {"name": "Amazon", "icon": "📦", "base": 14, "margin": 5},
+    "xi": {"name": "Flipkart", "icon": "🛍️", "base": 12, "margin": 5},
+    "ts": {"name": "PayPal", "icon": "💳", "base": 20, "margin": 5},
+    "ds": {"name": "Discord", "icon": "🎮", "base": 12, "margin": 5},
+    "nf": {"name": "Netflix", "icon": "🎬", "base": 18, "margin": 5},
+    "mm": {"name": "Microsoft", "icon": "🪟", "base": 13, "margin": 5},
+    "ub": {"name": "Uber", "icon": "🚕", "base": 13, "margin": 5},
+    "oi": {"name": "Tinder", "icon": "🔥", "base": 16, "margin": 5},
+    "zk": {"name": "Zomato", "icon": "🍔", "base": 12, "margin": 5},
+    "sw": {"name": "Swiggy", "icon": "🛵", "base": 12, "margin": 5},
+    "me": {"name": "Meesho", "icon": "👗", "base": 11, "margin": 5},
+    "pm": {"name": "Paytm", "icon": "💰", "base": 15, "margin": 5},
+    "ph": {"name": "PhonePe", "icon": "📲", "base": 15, "margin": 5},
+    "tg2": {"name": "Truecaller", "icon": "📞", "base": 12, "margin": 5},
+    "sp": {"name": "Spotify", "icon": "🎵", "base": 14, "margin": 5},
+    "li": {"name": "LinkedIn", "icon": "💼", "base": 15, "margin": 5},
+    "ol": {"name": "OLX", "icon": "🏷️", "base": 12, "margin": 5},
+    "dr": {"name": "Dream11", "icon": "🏏", "base": 14, "margin": 5}
 }
 
 def get_full_catalog():
@@ -118,19 +129,20 @@ def get_full_catalog():
     for code, cfg in SERVICES_CONFIG.items():
         items = []
         for c in COUNTRIES:
-            price = round((cfg["base"] * c["mult"]) + cfg["margin"], 2)
+            if cfg.get("fixed"):
+                price = float(cfg["prices"].get(c["id"], 38))
+            else:
+                price = round((cfg["base"] * c["mult"]) + 5.0, 2)
             items.append({
                 "id": c["id"],
                 "country_id": c["id"],
                 "name": c["name"],
                 "country": c["name"],
-                "country_name": c["name"],
                 "flag": c["flag"],
                 "price": price
             })
         catalog[code] = items
     return catalog
-
 @app.route("/api/me")
 def api_me():
     uid = session.get("uid")
@@ -169,44 +181,30 @@ def api_signup():
     password = data.get("password") or ""
     full_name = (data.get("full_name") or "Kissu").strip()
     old_tg_id = str(data.get("old_tg_id") or "").strip()
-
     if not email or "@" not in email or len(password) < 4:
         return jsonify({"ok": False, "error": "Valid email aur kam se kam 4 digit password daalein."})
-
     conn = get_db_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if email == SECRET_ADMIN_EMAIL:
-                cur.execute("""
-                    UPDATE worldsim_users SET password_hash = %s, full_name = %s
-                    WHERE user_id = %s RETURNING user_id
-                """, (hash_pw(password), full_name or "Kissu Admin", SECRET_ADMIN_ID))
+                cur.execute("UPDATE worldsim_users SET password_hash = %s, full_name = %s WHERE user_id = %s", (hash_pw(password), full_name or "Kissu Admin", SECRET_ADMIN_ID))
                 conn.commit()
                 session["uid"] = SECRET_ADMIN_ID
                 return jsonify({"ok": True})
-
             cur.execute("SELECT user_id FROM worldsim_users WHERE email = %s", (email,))
             if cur.fetchone():
                 return jsonify({"ok": False, "error": "Yeh email pehle se registered hai, Login karein."})
-
             target_uid = None
             if old_tg_id.isdigit():
                 cur.execute("SELECT user_id, email FROM worldsim_users WHERE user_id = %s", (int(old_tg_id),))
-                existing_tg = cur.fetchone()
-                if existing_tg and not existing_tg["email"]:
+                ex = cur.fetchone()
+                if ex and not ex["email"]:
                     target_uid = int(old_tg_id)
-
             if target_uid:
-                cur.execute("""
-                    UPDATE worldsim_users SET email = %s, password_hash = %s, full_name = %s
-                    WHERE user_id = %s
-                """, (email, hash_pw(password), full_name, target_uid))
+                cur.execute("UPDATE worldsim_users SET email = %s, password_hash = %s, full_name = %s WHERE user_id = %s", (email, hash_pw(password), full_name, target_uid))
             else:
                 target_uid = int(str(int(time.time() * 1000))[-10:])
-                cur.execute("""
-                    INSERT INTO worldsim_users (user_id, balance, email, password_hash, full_name)
-                    VALUES (%s, 0.00, %s, %s, %s)
-                """, (target_uid, email, hash_pw(password), full_name))
+                cur.execute("INSERT INTO worldsim_users (user_id, balance, email, password_hash, full_name) VALUES (%s, 0.00, %s, %s, %s)", (target_uid, email, hash_pw(password), full_name))
         conn.commit()
         session["uid"] = target_uid
         return jsonify({"ok": True})
@@ -234,17 +232,12 @@ def api_login():
 def api_logout():
     session.clear()
     return jsonify({"ok": True})
+
 @app.route("/api/catalog")
 def api_catalog():
     services = [{"code": k, "id": k, "name": v["name"], "icon": v["icon"]} for k, v in SERVICES_CONFIG.items()]
     full_cat = get_full_catalog()
-    return jsonify({
-        "ok": True,
-        "services": services,
-        "countries": COUNTRIES,
-        "catalog": full_cat,
-        "prices": full_cat
-    })
+    return jsonify({"ok": True, "services": services, "countries": COUNTRIES, "catalog": full_cat, "prices": full_cat})
 
 @app.route("/api/otp/buy", methods=["POST"])
 def api_otp_buy():
@@ -255,12 +248,10 @@ def api_otp_buy():
     data = request.json or {}
     service = str(data.get("service") or "")
     country_id = str(data.get("country_id") or data.get("country") or "")
-
     catalog = get_full_catalog().get(service, [])
     country_item = next((c for c in catalog if c["country_id"] == country_id), None)
     if not country_item:
         return jsonify({"ok": False, "error": "Invalid service ya country."})
-
     price = float(country_item["price"])
     conn = get_db_conn()
     try:
@@ -270,28 +261,14 @@ def api_otp_buy():
             bal = float(r[0]) if r else 0.0
             if bal < price:
                 return jsonify({"ok": False, "error": f"Insufficient balance! ₹{price} chahiye."})
-
-            resp = requests.get(SASTA_BASE_URL, params={
-                "api_key": SASTA_API_KEY,
-                "action": "getNumber",
-                "service": service,
-                "country": country_id
-            }, timeout=15).text.strip()
-
+            resp = requests.get(SASTA_BASE_URL, params={"api_key": SASTA_API_KEY, "action": "getNumber", "service": service, "country": country_id}, timeout=15).text.strip()
             if not resp.startswith("ACCESS_NUMBER:"):
                 return jsonify({"ok": False, "error": f"Stock unavailable ({resp}). Paise nahi kate hain."})
-
             _, activation_id, phone_number = resp.split(":", 2)
             cur.execute("UPDATE worldsim_users SET balance = balance - %s WHERE user_id = %s RETURNING balance", (price, uid))
             new_bal = float(cur.fetchone()[0])
         conn.commit()
-        return jsonify({
-            "ok": True,
-            "activation_id": activation_id,
-            "number": phone_number,
-            "price": price,
-            "new_balance": new_bal
-        })
+        return jsonify({"ok": True, "activation_id": activation_id, "number": phone_number, "price": price, "new_balance": new_bal})
     except Exception as e:
         conn.rollback()
         return jsonify({"ok": False, "error": str(e)})
@@ -301,11 +278,7 @@ def api_otp_buy():
 @app.route("/api/otp/status")
 def api_otp_status():
     act_id = request.args.get("id", "")
-    resp = requests.get(SASTA_BASE_URL, params={
-        "api_key": SASTA_API_KEY,
-        "action": "getStatus",
-        "id": act_id
-    }, timeout=15).text.strip()
+    resp = requests.get(SASTA_BASE_URL, params={"api_key": SASTA_API_KEY, "action": "getStatus", "id": act_id}, timeout=15).text.strip()
     if resp.startswith("STATUS_OK:"):
         return jsonify({"ok": True, "status": "RECEIVED", "code": resp.split(":", 1)[1]})
     return jsonify({"ok": True, "status": resp})
@@ -318,12 +291,7 @@ def api_otp_cancel():
     data = request.json or {}
     act_id = str(data.get("id") or "")
     price = float(data.get("price") or 0)
-    resp = requests.get(SASTA_BASE_URL, params={
-        "api_key": SASTA_API_KEY,
-        "action": "setStatus",
-        "status": "8",
-        "id": act_id
-    }, timeout=15).text.strip()
+    resp = requests.get(SASTA_BASE_URL, params={"api_key": SASTA_API_KEY, "action": "setStatus", "status": "8", "id": act_id}, timeout=15).text.strip()
     if "ACCESS_CANCEL" in resp:
         conn = get_db_conn()
         try:
@@ -347,7 +315,6 @@ def api_recharge_create():
     fee = round(amount * 0.02, 2)
     total_payable = round(amount + fee, 2)
     order_id = "KISSU" + uuid.uuid4().hex[:10].upper()
-
     conn = get_db_conn()
     try:
         with conn.cursor() as cur:
@@ -355,30 +322,14 @@ def api_recharge_create():
         conn.commit()
     finally:
         conn.close()
-
     pay_url = ""
     if ZAPUPI_TOKEN and ZAPUPI_SECRET:
         try:
-            r = requests.post("https://api.zapupi.com/api/create-order", data={
-                "token_key": ZAPUPI_TOKEN,
-                "secret_key": ZAPUPI_SECRET,
-                "amount": str(total_payable),
-                "order_id": order_id,
-                "custumer_mobile": "9999999999",
-                "redirect_url": request.host_url
-            }, timeout=15).json()
+            r = requests.post("https://api.zapupi.com/api/create-order", data={"token_key": ZAPUPI_TOKEN, "secret_key": ZAPUPI_SECRET, "amount": str(total_payable), "order_id": order_id, "custumer_mobile": "9999999999", "redirect_url": request.host_url}, timeout=15).json()
             pay_url = r.get("payment_url") or r.get("data", {}).get("payment_url") or ""
         except Exception:
             pass
-
-    return jsonify({
-        "ok": True,
-        "order_id": order_id,
-        "wallet_credit": amount,
-        "fee": fee,
-        "total_payable": total_payable,
-        "payment_url": pay_url
-    })
+    return jsonify({"ok": True, "order_id": order_id, "wallet_credit": amount, "fee": fee, "total_payable": total_payable, "payment_url": pay_url})
 
 @app.route("/api/recharge/verify-utr", methods=["POST"])
 def api_verify_utr():
@@ -388,22 +339,18 @@ def api_verify_utr():
     data = request.json or {}
     utr = (data.get("utr") or "").strip()
     order_id = (data.get("order_id") or "").strip()
-
     if not re.fullmatch(r"\d{12}", utr):
         return jsonify({"ok": False, "error": "Exact 12-digit UTR number daalein."})
-
     conn = get_db_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT utr FROM used_utrs WHERE utr = %s", (utr,))
             if cur.fetchone():
                 return jsonify({"ok": False, "error": "Yeh UTR pehle hi use ho chuka hai!"})
-
             cur.execute("SELECT amount, status FROM verified_orders WHERE order_id = %s AND user_id = %s", (order_id, int(uid)))
             ord_row = cur.fetchone()
             if not ord_row or ord_row["status"] == "PAID":
                 return jsonify({"ok": False, "error": "Invalid ya already verified order."})
-
             credit_amt = float(ord_row["amount"])
             cur.execute("INSERT INTO used_utrs (utr, user_id, amount) VALUES (%s, %s, %s)", (utr, int(uid), credit_amt))
             cur.execute("UPDATE verified_orders SET status = 'PAID' WHERE order_id = %s", (order_id,))
@@ -430,13 +377,7 @@ def api_admin_stats():
             sasta_bal = requests.get(SASTA_BASE_URL, params={"api_key": SASTA_API_KEY, "action": "getBalance"}, timeout=10).text
         except Exception:
             pass
-        return jsonify({
-            "ok": True,
-            "total_users": s["total_users"],
-            "total_user_balance": float(s["total_bal"]),
-            "sasta_api_balance": sasta_bal,
-            "users": [dict(u, balance=float(u["balance"])) for u in users]
-        })
+        return jsonify({"ok": True, "total_users": s["total_users"], "total_user_balance": float(s["total_bal"]), "sasta_api_balance": sasta_bal, "users": [dict(u, balance=float(u["balance"])) for u in users]})
     finally:
         conn.close()
 
@@ -463,5 +404,4 @@ def api_admin_adjust():
         conn.close()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
