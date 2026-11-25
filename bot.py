@@ -52,7 +52,7 @@ def init_db():
                 );
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS verified_orders (
+                CREATE TABLE IF NOT EXISTS kissu_web_orders (
                     order_id TEXT PRIMARY KEY,
                     user_id BIGINT,
                     amount NUMERIC(10, 2),
@@ -141,6 +141,7 @@ def get_full_catalog():
             })
         catalog[code] = items
     return catalog
+
 @app.route("/api/me")
 def api_me():
     uid = session.get("uid")
@@ -313,13 +314,30 @@ def api_recharge_create():
     fee = round(amount * 0.02, 2)
     total_payable = round(amount + fee, 2)
     order_id = "KISSU" + uuid.uuid4().hex[:10].upper()
+
     conn = get_db_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("INSERT INTO verified_orders (order_id, user_id, amount, status) VALUES (%s, %s, %s, 'PENDING')", (order_id, int(uid), amount))
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS kissu_web_orders (
+                    order_id TEXT PRIMARY KEY,
+                    user_id BIGINT,
+                    amount NUMERIC(10, 2),
+                    status TEXT DEFAULT 'PENDING',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute(
+                "INSERT INTO kissu_web_orders (order_id, user_id, amount, status) VALUES (%s, %s, %s, 'PENDING')",
+                (order_id, int(uid), amount)
+            )
         conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": f"DB Error: {str(e)}"})
     finally:
         conn.close()
+
     pay_url = ""
     try:
         r = requests.post("https://panel.zapupi.com/api/create-order", json={
@@ -328,11 +346,19 @@ def api_recharge_create():
             "order_id": order_id,
             "customer_mobile": "9999999999",
             "redirect_url": request.host_url
-        }, timeout=15).json()
+        }, timeout=12).json()
         pay_url = r.get("payment_url") or (r.get("data") or {}).get("payment_url") or ""
     except Exception as e:
         print("ZapUPI Order Note:", e)
-    return jsonify({"ok": True, "order_id": order_id, "wallet_credit": amount, "fee": fee, "total_payable": total_payable, "payment_url": pay_url})
+
+    return jsonify({
+        "ok": True,
+        "order_id": order_id,
+        "wallet_credit": amount,
+        "fee": fee,
+        "total_payable": total_payable,
+        "payment_url": pay_url
+    })
 
 @app.route("/api/recharge/verify-utr", methods=["POST"])
 def api_verify_utr():
@@ -350,17 +376,20 @@ def api_verify_utr():
             cur.execute("SELECT utr FROM used_utrs WHERE utr = %s", (utr,))
             if cur.fetchone():
                 return jsonify({"ok": False, "error": "Yeh UTR pehle hi use ho chuka hai!"})
-            cur.execute("SELECT amount, status FROM verified_orders WHERE order_id = %s AND user_id = %s", (order_id, int(uid)))
+            cur.execute("SELECT amount, status FROM kissu_web_orders WHERE order_id = %s AND user_id = %s", (order_id, int(uid)))
             ord_row = cur.fetchone()
             if not ord_row or ord_row["status"] == "PAID":
                 return jsonify({"ok": False, "error": "Invalid ya already verified order."})
             credit_amt = float(ord_row["amount"])
             cur.execute("INSERT INTO used_utrs (utr, user_id, amount) VALUES (%s, %s, %s)", (utr, int(uid), credit_amt))
-            cur.execute("UPDATE verified_orders SET status = 'PAID' WHERE order_id = %s", (order_id,))
+            cur.execute("UPDATE kissu_web_orders SET status = 'PAID' WHERE order_id = %s", (order_id,))
             cur.execute("UPDATE worldsim_users SET balance = balance + %s WHERE user_id = %s RETURNING balance", (credit_amt, int(uid)))
             new_bal = float(cur.fetchone()["balance"])
         conn.commit()
         return jsonify({"ok": True, "new_balance": new_bal, "credited": credit_amt})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)})
     finally:
         conn.close()
 
@@ -407,4 +436,5 @@ def api_admin_adjust():
         conn.close()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
