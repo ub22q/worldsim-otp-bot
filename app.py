@@ -1,14 +1,14 @@
-from flask import Flask, send_file
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from bot import app as backend_app
+from bot import app
 
-front = Flask(__name__)
+app.url_map._rules = [r for r in app.url_map._rules if r.rule != '/']
+app.url_map._rules_by_endpoint.pop('index', None)
+app.url_map._rules_by_endpoint.pop('home_page', None)
 
-@front.route("/")
-@front.route("/index.html")
-def serve_home():
-    return send_file("index.html")
+@app.route("/")
+def serve_kissu_app():
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
-app = DispatcherMiddleware(backend_app, {
-    "/": front
-})
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
+    
