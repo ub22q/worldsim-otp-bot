@@ -1,8 +1,10 @@
 import os
+import traceback
 from flask import Flask, send_from_directory, request, jsonify
 
 app = Flask(__name__)
 
+IMPORT_ERR = ""
 try:
     import bot
     app.secret_key = bot.app.secret_key
@@ -15,7 +17,8 @@ try:
                 methods=rule.methods
             )
 except Exception as e:
-    print("Bot import note:", e)
+    IMPORT_ERR = traceback.format_exc()
+    print("Bot import error:", IMPORT_ERR)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -36,8 +39,15 @@ def home():
 @app.errorhandler(404)
 def fallback_404(e):
     if request.path.startswith("/api/"):
-        return {"ok": False, "error": "API endpoint not found"}, 404
+        return jsonify({"ok": False, "error": IMPORT_ERR or f"API route not found: {request.path}"}), 404
     return send_from_directory(BASE_DIR, "index.html")
+
+@app.errorhandler(500)
+def fallback_500(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return "Internal Server Error", 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    
