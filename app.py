@@ -1,11 +1,14 @@
-from bot import app as base_app
+from flask import Flask, send_file
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from bot import app as backend_app
 
-# Purane conflicting '/' route ko clear karke index.html load karein
-base_app.view_functions['home_page'] = lambda: open("index.html", "r", encoding="utf-8").read()
-base_app.add_url_rule("/", endpoint="home_page", view_func=base_app.view_functions['home_page'])
+front = Flask(__name__)
 
-app = base_app
+@front.route("/")
+@front.route("/index.html")
+def serve_home():
+    return send_file("index.html")
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-    
+app = DispatcherMiddleware(backend_app, {
+    "/": front
+})
