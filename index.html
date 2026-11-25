@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Kissu Num Services</title>
 <style>
-  :root{--pink:#ff6ea8;--lav:#b983ff;--glass:rgba(20,12,32,0.72);--border:rgba(255,158,205,0.28)}
+  :root{--pink:#ff6ea8;--lav:#b983ff;--glass:rgba(20,12,32,0.74);--border:rgba(255,158,205,0.28)}
   *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
   body{min-height:100vh;background:#12081d;color:#fff;padding-bottom:84px;background-size:cover;background-position:center;background-attachment:fixed;transition:background-image .4s ease}
   body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(15,7,26,.65),rgba(18,8,30,.85));z-index:-1}
-  .topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:rgba(18,8,29,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:rgba(18,8,29,.84);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
   .brand{font-weight:800;font-size:18px;background:linear-gradient(90deg,#ff85b3,#c792ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
   .bal-pill{background:rgba(255,110,168,.18);border:1px solid var(--border);padding:6px 14px;border-radius:99px;font-weight:700;font-size:14px}
   .wrap{max-width:480px;margin:0 auto;padding:14px}
@@ -20,15 +20,18 @@
   input,select{width:100%;padding:12px 14px;border-radius:13px;border:1px solid var(--border);background:rgba(12,6,22,.82);color:#fff;font-size:14px;margin-bottom:10px;outline:none}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .svc-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:14px;padding:12px;color:#fff;text-align:left;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px}
-  .svc-btn.active{border-color:#ff6ea8;background:rgba(255,110,168,.24)}
   .country-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--border);margin-bottom:8px}
-  .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:space-around;background:rgba(16,7,26,.92);backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:8px 4px}
+  .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:space-around;background:rgba(16,7,26,.94);backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:8px 4px}
   .nav button{background:none;border:none;color:#bfa9d6;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 8px}
   .nav button.active{color:#ff7eb3;font-weight:700}
   .hidden{display:none!important}
   .chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px}
   .chip{white-space:nowrap;padding:8px 13px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid var(--border);color:#fff;font-size:13px;cursor:pointer}
   .chip.active{background:linear-gradient(135deg,var(--pink),var(--lav));border-color:transparent;font-weight:700}
+  .terms-list{font-size:13px;color:#eadcf7;padding-left:18px;line-height:1.75}
+  .terms-list li{margin-bottom:6px}
+  .modal-bg{position:fixed;inset:0;z-index:99;background:rgba(10,4,18,.88);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal-card{max-width:440px;width:100%;max-height:86vh;overflow-y:auto;background:rgba(26,14,42,.96);border:1px solid var(--pink);border-radius:22px;padding:18px;box-shadow:0 12px 40px rgba(255,110,168,.25)}
 </style>
 </head>
 <body>
@@ -36,6 +39,23 @@
 <div class="topbar">
   <div class="brand">🎀 Kissu Num Services</div>
   <div class="bal-pill" id="topBal">₹0.00</div>
+</div>
+
+<!-- MANDATORY TERMS AGREE MODAL AFTER LOGIN -->
+<div class="modal-bg hidden" id="termsModal">
+  <div class="modal-card">
+    <h3 style="margin-bottom:6px;color:#ff85b3">📜 Terms & Conditions</h3>
+    <p style="font-size:12px;color:#d6bfe8;margin-bottom:12px">Aage badhne ke liye hamare rules dhyan se padhein aur agree karein:</p>
+    <ul class="terms-list" style="margin-bottom:14px">
+      <li><b>100% Instant Refund:</b> OTP receive hone se pehle number cancel karne par poora paisa turant wallet mein wapas aa jata hai.</li>
+      <li><b>No Refund After OTP:</b> Ek baar SMS/OTP code generate aur deliver hone ke baad koi refund ya replacement nahi milega.</li>
+      <li><b>Account Safety & 2FA:</b> Number par account banane ke baad apna Two-Step Verification (2FA) turant lagayein. App/platform ki policy se number ban ya logout hone par hamari zimmedari nahi hogi.</li>
+      <li><b>Single-Use UTR Rule:</b> Recharge karte waqt sirf apna naya 12-digit UPI UTR daalein. Fake ya purana UTR submit karne par account permanently block kar diya jayega.</li>
+      <li><b>Wallet Balance:</b> Wallet mein add kiya gaya balance non-withdrawable hai, isse sirf virtual numbers kharidne ke liye use kiya ja sakta hai.</li>
+      <li><b>Official Support:</b> Kisi bhi help ke liye sirf <b>@kissu_num</b> par contact karein.</li>
+    </ul>
+    <button class="btn btn-green" onclick="acceptTerms()">✅ I Agree & Continue</button>
+  </div>
 </div>
 
 <!-- AUTH SCREEN -->
@@ -127,11 +147,14 @@
   <!-- TERMS TAB -->
   <div id="tab-terms" class="hidden">
     <div class="card">
-      <h3 style="margin-bottom:8px">📜 Terms & Rules</h3>
-      <ul style="font-size:13px;color:#e4d3f2;padding-left:18px;line-height:1.7">
-        <li>OTP receive na hone par number cancel karne se 100% instant refund wallet me aata hai.</li>
-        <li>Ek hi 12-digit UTR dobara submit karne par account auto-block ho sakta hai.</li>
-        <li>24/7 Support ke liye Telegram par <b>@kissu_num</b> par message karein.</li>
+      <h3 style="margin-bottom:10px;color:#ff85b3">📜 Terms & Conditions</h3>
+      <ul class="terms-list">
+        <li><b>100% Instant Refund:</b> OTP receive hone se pehle number cancel karne par poora paisa turant wallet mein wapas aa jata hai.</li>
+        <li><b>No Refund After OTP:</b> Ek baar SMS/OTP code generate aur deliver hone ke baad koi refund ya replacement nahi milega.</li>
+        <li><b>Account Safety & 2FA:</b> Number par account banane ke baad apna Two-Step Verification (2FA) turant lagayein. App/platform ki policy se number ban ya logout hone par hamari zimmedari nahi hogi.</li>
+        <li><b>Single-Use UTR Rule:</b> Recharge karte waqt sirf apna naya 12-digit UPI UTR daalein. Fake ya purana UTR submit karne par account permanently block kar diya jayega.</li>
+        <li><b>Wallet Balance:</b> Wallet mein add kiya gaya balance non-withdrawable hai, isse sirf virtual numbers kharidne ke liye use kiya ja sakta hai.</li>
+        <li><b>Official Support:</b> Kisi bhi help ya query ke liye Telegram par <b>@kissu_num</b> par message karein.</li>
       </ul>
     </div>
   </div>
@@ -163,6 +186,7 @@ let selectedSvc = 'tg';
 let currentOrderId = '';
 let bgImages = [];
 let activeOrders = JSON.parse(localStorage.getItem('kissu_orders') || '[]');
+let currentUserId = '';
 
 const tabBgIndex = {auth:0, home:1, buy:2, recharge:3, orders:4, terms:5, admin:6};
 
@@ -170,6 +194,11 @@ function applyTabBg(tab){
   if(!bgImages.length) return;
   const idx = (tabBgIndex[tab] || 0) % bgImages.length;
   document.body.style.backgroundImage = `url('/img/${bgImages[idx]}')`;
+}
+
+function acceptTerms(){
+  localStorage.setItem('kissu_terms_ok_' + currentUserId, '1');
+  document.getElementById('termsModal').classList.add('hidden');
 }
 
 async function init(){
@@ -180,10 +209,14 @@ async function init(){
 
   const me = await (await fetch('/api/me')).json();
   if(me.ok){
+    const u = me.user;
+    currentUserId = String(u.id);
+    if(!localStorage.getItem('kissu_terms_ok_' + currentUserId)){
+      document.getElementById('termsModal').classList.remove('hidden');
+    }
     document.getElementById('authBox').classList.add('hidden');
     document.getElementById('appBox').classList.remove('hidden');
     document.getElementById('bottomNav').classList.remove('hidden');
-    const u = me.user;
     document.getElementById('topBal').innerText = '₹' + u.balance.toFixed(2);
     document.getElementById('mainBal').innerText = '₹' + u.balance.toFixed(2);
     document.getElementById('userGreet').innerText = `Hi, ${u.name} (${u.email})`;
@@ -216,6 +249,7 @@ async function submitAuth(){
 }
 
 async function logout(){
+  if(currentUserId) localStorage.removeItem('kissu_terms_ok_' + currentUserId);
   await fetch('/api/auth/logout',{method:'POST'});
   location.reload();
 }
@@ -255,7 +289,7 @@ function renderCountries(){
   if(!items.length){ box.innerHTML = '<p style="text-align:center;color:#cdb4e2;padding:16px">No countries found</p>'; return; }
   box.innerHTML = items.map(c => `
     <div class="country-row">
-      <div><b>${c.flag} ${c.name}</b><div style="font-size:12px;color:#d6bfe8">Instant OTP • SastaSMS</div></div>
+      <div><b>${c.flag} ${c.name}</b><div style="font-size:12px;color:#d6bfe8">Instant OTP • Auto Refund</div></div>
       <button class="btn" style="width:auto;padding:8px 16px" onclick="buyNumber('${c.id}')">₹${c.price}</button>
     </div>
   `).join('');
@@ -344,7 +378,7 @@ function switchTab(t){
 async function loadAdmin(){
   const r = await (await fetch('/api/admin/stats')).json();
   if(r.ok){
-    document.getElementById('adminStatsBox').innerHTML = `Total Users: <b>${r.total_users}</b><br>Total User Wallet: <b>₹${r.total_user_balance}</b><br>SastaSMS API Balance: <b>${r.sasta_api_balance}</b>`;
+    document.getElementById('adminStatsBox').innerHTML = `Total Users: <b>${r.total_users}</b><br>Total User Wallet: <b>₹${r.total_user_balance}</b><br>Provider Balance: <b>${r.sasta_api_balance}</b>`;
   }
 }
 
