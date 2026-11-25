@@ -126,10 +126,10 @@
       <h3 style="margin-bottom:6px">⚡ Instant Wallet Top-Up</h3>
       <p style="font-size:12px;color:#d6bfe8;margin-bottom:12px">2% platform fee • Instant 12-digit UTR verification</p>
       <input id="rechAmt" type="number" placeholder="Enter Amount (Min ₹10)">
-      <button class="btn btn-green" onclick="createOrder()">Proceed to Pay</button>
+      <button class="btn btn-green" id="proceedPayBtn" onclick="createOrder()">Proceed to Pay</button>
       <div id="payStepBox" class="hidden" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-        <div id="paySummary" style="font-size:13px;margin-bottom:10px"></div>
-        <a id="zapPayLink" href="#" target="_blank" class="hidden"><button class="btn" style="margin-bottom:10px">Open UPI Payment Link</button></a>
+        <div id="paySummary" style="font-size:13px;margin-bottom:10px;line-height:1.6"></div>
+        <a id="zapPayLink" href="#" target="_blank" class="hidden"><button class="btn" style="margin-bottom:10px">💳 Open ZapUPI Payment Link</button></a>
         <input id="utrInput" maxlength="12" placeholder="Enter 12-digit UPI UTR Number">
         <button class="btn btn-green" onclick="verifyUtr()">Verify & Add Balance</button>
       </div>
@@ -342,16 +342,30 @@ async function cancelOtp(id, price, idx){
 }
 
 async function createOrder(){
+  const btn = document.getElementById('proceedPayBtn');
   const amt = parseFloat(document.getElementById('rechAmt').value || 0);
-  const r = await (await fetch('/api/recharge/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:amt})})).json();
-  if(!r.ok){ alert(r.error); return; }
-  currentOrderId = r.order_id;
-  document.getElementById('payStepBox').classList.remove('hidden');
-  document.getElementById('paySummary').innerText = `Order: ${r.order_id} | Wallet Credit: ₹${r.wallet_credit} | Total Pay (with 2% fee): ₹${r.total_payable}`;
-  if(r.payment_url){
+  if(amt < 10){ alert('Minimum recharge ₹10 hai.'); return; }
+  btn.innerText = 'Creating Order...';
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/recharge/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:amt})});
+    const r = await res.json();
+    if(!r.ok){ alert(r.error || 'Order failed'); return; }
+    currentOrderId = r.order_id;
+    document.getElementById('payStepBox').classList.remove('hidden');
+    document.getElementById('paySummary').innerHTML = `✅ Order ID: <b>${r.order_id}</b><br>Wallet Credit: <b>₹${r.wallet_credit}</b> | Total Pay (2% fee): <b>₹${r.total_payable}</b>`;
     const a = document.getElementById('zapPayLink');
-    a.href = r.payment_url;
-    a.classList.remove('hidden');
+    if(r.payment_url){
+      a.href = r.payment_url;
+      a.classList.remove('hidden');
+    } else {
+      a.classList.add('hidden');
+    }
+  }catch(e){
+    alert('Error: ' + e.message);
+  }finally{
+    btn.innerText = 'Proceed to Pay';
+    btn.disabled = false;
   }
 }
 
