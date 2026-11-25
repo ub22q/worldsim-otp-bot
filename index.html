@@ -2,402 +2,359 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#140d1f">
-<title>Kissu Num Services — Instant Virtual OTP</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Kissu Num Services</title>
 <style>
-  :root {
-    --bg: #130b1c; --card: #1e132c; --card2: #28193b; --border: rgba(244,114,182,0.18);
-    --primary: #ec4899; --accent: #a855f7; --green: #10b981; --danger: #fb7185; --text: #fdf2f8; --muted: #d8b4fe;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-  body { background: radial-gradient(circle at top, #27133a 0%, #130b1c 65%); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 86px; }
-  .header { position: sticky; top: 0; z-index: 50; background: rgba(19,11,28,0.92); backdrop-filter: blur(12px); padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-  .brand { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-  .brand span { background: linear-gradient(90deg, #f472b6, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .bal-pill { background: linear-gradient(135deg, rgba(236,72,153,0.22), rgba(168,85,247,0.22)); border: 1px solid rgba(244,114,182,0.45); padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 800; color: #f9a8d4; }
-  .container { padding: 15px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 16px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
-  .hero-card { background: linear-gradient(135deg, #32184c 0%, #1d112b 100%); border: 1px solid rgba(244,114,182,0.38); border-radius: 22px; padding: 18px; margin-bottom: 15px; position: relative; overflow: hidden; }
-  .mascot-badge { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .mascot-avatar { width: 54px; height: 54px; border-radius: 16px; background: linear-gradient(135deg, #f472b6, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(236,72,153,0.4); border: 2px solid #fbcfe8; flex-shrink: 0; }
-  .hero-bal { font-size: 32px; font-weight: 800; margin: 4px 0 10px; color: #fff; }
-  .badge { display: inline-block; font-size: 11px; padding: 4px 10px; border-radius: 99px; background: rgba(244,114,182,0.2); color: #f9a8d4; font-weight: 700; }
-  .btn { width: 100%; padding: 13px; border: none; border-radius: 14px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
-  .btn:active { transform: scale(0.98); }
-  .btn-primary { background: linear-gradient(135deg, #ec4899, #a855f7); color: #fff; box-shadow: 0 4px 14px rgba(236,72,153,0.35); }
-  .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
-  .btn-danger { background: rgba(251,113,133,0.16); color: #fda4af; border: 1px solid rgba(251,113,133,0.35); }
-  .btn-ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  input { width: 100%; padding: 13px 14px; background: #12091c; border: 1px solid var(--border); border-radius: 13px; color: #fff; font-size: 14px; margin-bottom: 10px; outline: none; }
-  input:focus { border-color: var(--primary); }
-  .srv-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; scrollbar-width: none; }
-  .srv-scroll::-webkit-scrollbar { display: none; }
-  .srv-chip { flex: 0 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 10px 14px; color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-  .srv-chip.active { background: linear-gradient(135deg, #ec4899, #a855f7); border-color: #f9a8d4; color: #fff; }
-  .country-row { display: flex; justify-content: space-between; align-items: center; background: var(--card2); border: 1px solid var(--border); padding: 12px 14px; border-radius: 15px; margin-bottom: 8px; }
-  .price-tag { background: linear-gradient(135deg, rgba(236,72,153,0.22), rgba(168,85,247,0.22)); color: #f9a8d4; padding: 7px 13px; border-radius: 11px; font-weight: 800; font-size: 13px; border: 1px solid rgba(244,114,182,0.4); cursor: pointer; }
-  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(24,14,36,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 4px 12px; z-index: 60; }
-  .nav-item { background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 10px; }
-  .nav-item.active { color: #f472b6; }
-  .nav-icon { font-size: 19px; }
-  .hidden { display: none !important; }
-  .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #28193b; border: 1px solid #f472b6; color: #fff; padding: 10px 18px; border-radius: 13px; font-size: 13px; font-weight: 700; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-  .otp-box { background: #12091c; border: 1px dashed #f472b6; padding: 12px; border-radius: 12px; text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #34d399; margin: 10px 0; }
-  .rule-item { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-  .rule-item h4 { font-size: 13px; color: #f9a8d4; margin-bottom: 3px; }
-  .rule-item p { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  :root{--pink:#ff6ea8;--lav:#b983ff;--glass:rgba(20,12,32,0.72);--border:rgba(255,158,205,0.28)}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  body{min-height:100vh;background:#12081d;color:#fff;padding-bottom:84px;background-size:cover;background-position:center;background-attachment:fixed;transition:background-image .4s ease}
+  body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(15,7,26,.65),rgba(18,8,30,.85));z-index:-1}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:rgba(18,8,29,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+  .brand{font-weight:800;font-size:18px;background:linear-gradient(90deg,#ff85b3,#c792ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .bal-pill{background:rgba(255,110,168,.18);border:1px solid var(--border);padding:6px 14px;border-radius:99px;font-weight:700;font-size:14px}
+  .wrap{max-width:480px;margin:0 auto;padding:14px}
+  .card{background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .btn{width:100%;padding:13px;border:none;border-radius:14px;font-weight:700;font-size:15px;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--pink),var(--lav))}
+  .btn-green{background:linear-gradient(135deg,#10b981,#059669)}
+  .btn-dark{background:rgba(255,255,255,.08);border:1px solid var(--border)}
+  input,select{width:100%;padding:12px 14px;border-radius:13px;border:1px solid var(--border);background:rgba(12,6,22,.82);color:#fff;font-size:14px;margin-bottom:10px;outline:none}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .svc-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:14px;padding:12px;color:#fff;text-align:left;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px}
+  .svc-btn.active{border-color:#ff6ea8;background:rgba(255,110,168,.24)}
+  .country-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--border);margin-bottom:8px}
+  .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:space-around;background:rgba(16,7,26,.92);backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:8px 4px}
+  .nav button{background:none;border:none;color:#bfa9d6;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 8px}
+  .nav button.active{color:#ff7eb3;font-weight:700}
+  .hidden{display:none!important}
+  .chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px}
+  .chip{white-space:nowrap;padding:8px 13px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid var(--border);color:#fff;font-size:13px;cursor:pointer}
+  .chip.active{background:linear-gradient(135deg,var(--pink),var(--lav));border-color:transparent;font-weight:700}
 </style>
 </head>
 <body>
-  <div id="toast" class="toast hidden"></div>
 
-<div id="auth-screen" class="container" style="padding-top: 34px;">
-  <div style="text-align:center; margin-bottom:22px;">
-    <div style="width:76px; height:76px; margin:0 auto 10px; border-radius:24px; background:linear-gradient(135deg,#f472b6,#a855f7); display:flex; align-items:center; justify-content:center; font-size:42px; border:2px solid #fbcfe8; box-shadow:0 8px 25px rgba(236,72,153,0.4);">🎀</div>
-    <h2 style="font-size:23px; font-weight:800;">Kissu Num <span style="color:#f472b6;">Services</span></h2>
-    <p style="color:var(--muted); font-size:13px; margin-top:4px;">Cute, Fast & Instant Virtual OTP Store ✨</p>
-  </div>
+<div class="topbar">
+  <div class="brand">🎀 Kissu Num Services</div>
+  <div class="bal-pill" id="topBal">₹0.00</div>
+</div>
 
+<!-- AUTH SCREEN -->
+<div class="wrap" id="authBox">
   <div class="card">
-    <div class="grid-2" style="margin-bottom:16px;">
-      <button id="tab-login-btn" class="btn btn-primary" onclick="switchAuthTab('login')">Gmail Login</button>
-      <button id="tab-signup-btn" class="btn btn-ghost" onclick="switchAuthTab('signup')">Create Account</button>
+    <h2 style="margin-bottom:6px">Welcome to Kissu Num 🌸</h2>
+    <p style="font-size:13px;color:#d6bfe8;margin-bottom:14px">Instant Virtual Numbers & Automated OTP</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <button class="btn" id="tabLoginBtn" onclick="toggleAuth('login')">Login</button>
+      <button class="btn btn-dark" id="tabSignupBtn" onclick="toggleAuth('signup')">Create Account</button>
     </div>
-
-    <div id="login-form">
-      <input type="email" id="login-email" placeholder="Enter your Gmail (example@gmail.com)">
-      <input type="password" id="login-pass" placeholder="Enter Password">
-      <button class="btn btn-primary" onclick="doLogin()">🎀 Login to Kissu Num</button>
-    </div>
-
-    <div id="signup-form" class="hidden">
-      <input type="text" id="reg-name" placeholder="Your Cute Nickname">
-      <input type="email" id="reg-email" placeholder="Your Gmail (example@gmail.com)">
-      <input type="password" id="reg-pass" placeholder="Create Password">
-      <input type="number" id="reg-tgid" placeholder="Old Telegram User ID (Optional - sync balance)">
-      <button class="btn btn-success" onclick="doSignup()">✨ Create Account</button>
-    </div>
+    <input id="authName" class="hidden" placeholder="Your Name (e.g. Kissu)">
+    <input id="authEmail" type="email" placeholder="Email Address">
+    <input id="authPass" type="password" placeholder="Password">
+    <input id="authOldId" class="hidden" placeholder="Old Telegram User ID (Optional - sync balance)">
+    <button class="btn" onclick="submitAuth()" id="authSubmitBtn">Login to Kissu Num</button>
+    <p id="authErr" style="color:#ff809b;font-size:13px;margin-top:8px"></p>
   </div>
 </div>
 
-<div id="main-app" class="hidden">
-  <div class="header">
-    <div class="brand">🎀 Kissu Num <span>Services</span></div>
-    <div class="bal-pill" id="top-bal">₹0.00</div>
-  </div>
-
-  <div id="view-home" class="container">
-    <div class="hero-card">
-      <div class="mascot-badge">
-        <div class="mascot-avatar">👧🏻</div>
-        <div>
-          <span class="badge">✨ Verified Instant OTP</span>
-          <div style="margin-top:5px; font-size:13px; color:var(--muted);" id="user-greeting">Welcome back!</div>
-        </div>
-      </div>
-      <div class="hero-bal" id="hero-bal">₹0.00</div>
-      <div style="font-size:12px; color:var(--muted); margin-bottom:14px;" id="user-meta">ID: —</div>
-      <div class="grid-2">
-        <button class="btn btn-primary" onclick="navTo('store')">🛒 Buy OTP</button>
-        <button class="btn btn-success" onclick="navTo('recharge')">➕ Add Funds</button>
+<!-- MAIN APP -->
+<div class="wrap hidden" id="appBox">
+  <!-- HOME TAB -->
+  <div id="tab-home">
+    <div class="card">
+      <div style="font-size:13px;color:#f7b2d9">✨ Verified Instant OTP</div>
+      <div style="font-weight:700;font-size:16px;margin:4px 0" id="userGreet">Hi, Kissu</div>
+      <div style="font-size:32px;font-weight:800;margin:6px 0" id="mainBal">₹0.00</div>
+      <div style="font-size:12px;color:#cdb4e2;margin-bottom:14px" id="userMeta">Account ID: - • Purchases: 0</div>
+      <div class="grid2">
+        <button class="btn" onclick="switchTab('buy')">🛒 Buy OTP</button>
+        <button class="btn btn-green" onclick="switchTab('recharge')">+ Add Funds</button>
       </div>
     </div>
 
     <div class="card">
-      <h3 style="font-size:15px; margin-bottom:12px;">🌸 Popular Services</h3>
-      <div class="grid-2">
-        <button class="btn btn-ghost" onclick="openService('wa')">💬 WhatsApp</button>
-        <button class="btn btn-ghost" onclick="openService('tg')">✈️ Telegram</button>
-        <button class="btn btn-ghost" onclick="openService('go')">🌐 Google</button>
-        <button class="btn btn-ghost" onclick="openService('ig')">📸 Instagram</button>
-      </div>
+      <div style="font-weight:700;margin-bottom:10px">🌸 Popular Services (25+ Apps)</div>
+      <div class="grid2" id="homePopularGrid"></div>
     </div>
 
-    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
       <div>
-        <div style="font-weight:700; font-size:14px;">💌 Customer Support</div>
-        <div style="font-size:12px; color:var(--muted);">Chat with @kissu_num</div>
+        <div style="font-weight:700">💌 Customer Support</div>
+        <div style="font-size:12px;color:#d6bfe8">Chat with @kissu_num</div>
       </div>
-      <a href="https://t.me/kissu_num" target="_blank" class="btn btn-primary" style="width:auto; padding:9px 15px;">Support</a>
+      <a href="https://t.me/kissu_num" target="_blank" style="text-decoration:none"><button class="btn" style="padding:9px 16px">Support</button></a>
     </div>
 
-    <button id="admin-nav-btn" class="btn btn-ghost hidden" style="margin-bottom:10px; border-color:#f472b6;" onclick="navTo('admin')">👑 Secret Admin Control</button>
-    <button class="btn btn-danger" onclick="doLogout()">🚪 Logout</button>
+    <button class="btn btn-dark hidden" id="adminOpenBtn" onclick="switchTab('admin')" style="margin-bottom:10px;border-color:#facc15;color:#fde047">👑 Secret Admin Control</button>
+    <button class="btn btn-dark" onclick="logout()">🚪 Logout</button>
   </div>
 
-  <div id="view-store" class="container hidden">
-    <div id="srv-tabs" class="srv-scroll"></div>
-    <input type="text" id="country-search" placeholder="🔍 Search country (Indonesia, India, USA-2...)" oninput="renderCountries()">
-    <div id="country-list"></div>
-  </div>
-
-  <div id="view-recharge" class="container hidden">
+  <!-- BUY OTP TAB -->
+  <div id="tab-buy" class="hidden">
     <div class="card">
-      <h3 style="font-size:16px; margin-bottom:6px;">🇮🇳 Instant UPI Deposit</h3>
-      <p style="font-size:12px; color:var(--muted); margin-bottom:14px;">Minimum ₹10 • 2% Platform Fee • One UTR = One Credit</p>
-      <div class="grid-3" style="margin-bottom:10px;">
-        <button class="btn btn-ghost" onclick="createDeposit(10)">₹10</button>
-        <button class="btn btn-ghost" onclick="createDeposit(50)">₹50</button>
-        <button class="btn btn-ghost" onclick="createDeposit(100)">₹100</button>
-        <button class="btn btn-ghost" onclick="createDeposit(250)">₹250</button>
-        <button class="btn btn-ghost" onclick="createDeposit(500)">₹500</button>
-        <button class="btn btn-ghost" onclick="createDeposit(1000)">₹1000</button>
+      <div style="font-weight:700;margin-bottom:8px">1. Select Service</div>
+      <input id="svcSearch" placeholder="Search app (WhatsApp, Telegram, Zomato...)" oninput="renderServices()">
+      <div class="chip-row" id="svcChips"></div>
+      <div style="font-weight:700;margin:8px 0">2. Select Country & Buy</div>
+      <input id="countrySearch" placeholder="Search country (India, Indonesia, USA-2...)" oninput="renderCountries()">
+      <div id="countryList"></div>
+    </div>
+  </div>
+
+  <!-- RECHARGE TAB -->
+  <div id="tab-recharge" class="hidden">
+    <div class="card">
+      <h3 style="margin-bottom:6px">⚡ Instant Wallet Top-Up</h3>
+      <p style="font-size:12px;color:#d6bfe8;margin-bottom:12px">2% platform fee • Instant 12-digit UTR verification</p>
+      <input id="rechAmt" type="number" placeholder="Enter Amount (Min ₹10)">
+      <button class="btn btn-green" onclick="createOrder()">Proceed to Pay</button>
+      <div id="payStepBox" class="hidden" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div id="paySummary" style="font-size:13px;margin-bottom:10px"></div>
+        <a id="zapPayLink" href="#" target="_blank" class="hidden"><button class="btn" style="margin-bottom:10px">Open UPI Payment Link</button></a>
+        <input id="utrInput" maxlength="12" placeholder="Enter 12-digit UPI UTR Number">
+        <button class="btn btn-green" onclick="verifyUtr()">Verify & Add Balance</button>
       </div>
-      <div style="display:flex; gap:8px;">
-        <input type="number" id="custom-amt" placeholder="Custom ₹ (Min 10)" style="margin:0;">
-        <button class="btn btn-primary" style="width:110px;" onclick="createDeposit(document.getElementById('custom-amt').value)">Pay</button>
-      </div>
-    </div>
-
-    <div id="pay-box" class="card hidden">
-      <div style="text-align:center;">
-        <span class="badge" id="pay-order-id">Order #</span>
-        <div style="margin:12px 0;"><img id="pay-qr" src="" style="width:190px; height:190px; border-radius:14px; background:#fff; padding:8px;"></div>
-        <div style="font-size:13px; margin-bottom:12px;" id="pay-summary"></div>
-        <a id="pay-link-btn" href="#" target="_blank" class="btn btn-primary" style="margin-bottom:12px;">💳 Pay Now (Instant UPI) ↗</a>
-      </div>
-      <input type="text" id="utr-input" maxlength="12" placeholder="Enter exact 12-digit UTR number">
-      <button class="btn btn-success" onclick="verifyUtr()">✅ Verify 12-Digit UTR</button>
     </div>
   </div>
 
-  <div id="view-orders" class="container hidden">
-    <h3 style="font-size:16px; margin-bottom:12px;">📑 Active & Recent Numbers</h3>
-    <div id="orders-list"></div>
-  </div>
-
-  <div id="view-terms" class="container hidden">
+  <!-- ORDERS TAB -->
+  <div id="tab-orders" class="hidden">
     <div class="card">
-      <h3 style="font-size:16px; margin-bottom:12px;">📋 Terms of Service</h3>
-      <div class="rule-item"><h4>1. No Refunds</h4><p>All sales are final. No refunds under any circumstances.</p></div>
-      <div class="rule-item"><h4>2. Sub-₹40 Rule</h4><p>Accounts priced below ₹40 carry no warranty for login failures or missing codes.</p></div>
-      <div class="rule-item"><h4>3. No Re-logins</h4><p>Sessions are permanently closed after purchase. One login only.</p></div>
-      <div class="rule-item"><h4>4. Premium Accounts</h4><p>Cheap quality accounts may last only 1–2 days. Buy at your own risk.</p></div>
-      <div class="rule-item"><h4>5. No Longevity Guarantee</h4><p>We do not guarantee account lifespan, 2FA status or spam block status.</p></div>
-      <div class="rule-item" style="border:none; margin:0; padding:0;"><h4>6. Liability</h4><p>Use at your own risk. Support: @kissu_num</p></div>
+      <h3 style="margin-bottom:10px">📋 Active & Recent Numbers</h3>
+      <div id="ordersList"><p style="font-size:13px;color:#cdb4e2">Koi active number nahi hai. Buy OTP se number lein.</p></div>
     </div>
   </div>
 
-  <div id="view-admin" class="container hidden">
+  <!-- TERMS TAB -->
+  <div id="tab-terms" class="hidden">
     <div class="card">
-      <h3 style="font-size:16px; margin-bottom:10px;">👑 Secret Admin Balance Manager</h3>
-      <input type="number" id="adm-uid" placeholder="User ID">
-      <input type="number" id="adm-amt" placeholder="Amount (+ to add, - to cut)">
-      <button class="btn btn-primary" onclick="adminUpdateBal()">Update User Balance</button>
-    </div>
-    <div class="card">
-      <h3 style="font-size:15px; margin-bottom:10px;">👥 Registered Users</h3>
-      <div id="admin-users-list" style="font-size:12px;">Loading...</div>
+      <h3 style="margin-bottom:8px">📜 Terms & Rules</h3>
+      <ul style="font-size:13px;color:#e4d3f2;padding-left:18px;line-height:1.7">
+        <li>OTP receive na hone par number cancel karne se 100% instant refund wallet me aata hai.</li>
+        <li>Ek hi 12-digit UTR dobara submit karne par account auto-block ho sakta hai.</li>
+        <li>24/7 Support ke liye Telegram par <b>@kissu_num</b> par message karein.</li>
+      </ul>
     </div>
   </div>
 
-  <div class="nav">
-    <button class="nav-item active" id="nav-home" onclick="navTo('home')"><span class="nav-icon">🏠</span>Home</button>
-    <button class="nav-item" id="nav-store" onclick="navTo('store')"><span class="nav-icon">🛒</span>Buy OTP</button>
-    <button class="nav-item" id="nav-recharge" onclick="navTo('recharge')"><span class="nav-icon">💳</span>Recharge</button>
-    <button class="nav-item" id="nav-orders" onclick="navTo('orders')"><span class="nav-icon">📑</span>Orders</button>
-    <button class="nav-item" id="nav-terms" onclick="navTo('terms')"><span class="nav-icon">📋</span>Terms</button>
+  <!-- SECRET ADMIN TAB -->
+  <div id="tab-admin" class="hidden">
+    <div class="card">
+      <h3 style="margin-bottom:10px;color:#fde047">👑 Secret Admin Panel</h3>
+      <div id="adminStatsBox" style="font-size:13px;line-height:1.8;margin-bottom:12px">Loading...</div>
+      <input id="adjTarget" placeholder="User Email or Account ID">
+      <input id="adjAmt" type="number" placeholder="Amount (+50 ya -20)">
+      <button class="btn" onclick="adminAdjust()">Update User Balance</button>
+    </div>
   </div>
 </div>
+
+<div class="nav hidden" id="bottomNav">
+  <button class="active" id="nav-home" onclick="switchTab('home')">🏠<span>Home</span></button>
+  <button id="nav-buy" onclick="switchTab('buy')">🛒<span>Buy OTP</span></button>
+  <button id="nav-recharge" onclick="switchTab('recharge')">💳<span>Recharge</span></button>
+  <button id="nav-orders" onclick="switchTab('orders')">📋<span>Orders</span></button>
+  <button id="nav-terms" onclick="switchTab('terms')">📜<span>Terms</span></button>
+</div>
+
 <script>
-let state = { user: null, services: {}, catalog: {}, orders: [], currentSrv: 'wa', activeDepOrderId: '' };
+let authMode = 'login';
+let catalogData = {services:[], countries:[], prices:{}};
+let selectedSvc = 'tg';
+let currentOrderId = '';
+let bgImages = [];
+let activeOrders = JSON.parse(localStorage.getItem('kissu_orders') || '[]');
 
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 3200);
+const tabBgIndex = {auth:0, home:1, buy:2, recharge:3, orders:4, terms:5, admin:6};
+
+function applyTabBg(tab){
+  if(!bgImages.length) return;
+  const idx = (tabBgIndex[tab] || 0) % bgImages.length;
+  document.body.style.backgroundImage = `url('/img/${bgImages[idx]}')`;
 }
 
-function switchAuthTab(tab) {
-  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
-  document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
-  document.getElementById('tab-login-btn').className = tab === 'login' ? 'btn btn-primary' : 'btn btn-ghost';
-  document.getElementById('tab-signup-btn').className = tab === 'signup' ? 'btn btn-success' : 'btn btn-ghost';
+async function init(){
+  try{
+    const bgRes = await (await fetch('/api/bg-images')).json();
+    if(bgRes.ok && bgRes.images.length){ bgImages = bgRes.images; applyTabBg('auth'); }
+  }catch(e){}
+
+  const me = await (await fetch('/api/me')).json();
+  if(me.ok){
+    document.getElementById('authBox').classList.add('hidden');
+    document.getElementById('appBox').classList.remove('hidden');
+    document.getElementById('bottomNav').classList.remove('hidden');
+    const u = me.user;
+    document.getElementById('topBal').innerText = '₹' + u.balance.toFixed(2);
+    document.getElementById('mainBal').innerText = '₹' + u.balance.toFixed(2);
+    document.getElementById('userGreet').innerText = `Hi, ${u.name} (${u.email})`;
+    document.getElementById('userMeta').innerText = `Account ID: ${u.id} • Purchases: ${activeOrders.length}`;
+    if(u.is_admin) document.getElementById('adminOpenBtn').classList.remove('hidden');
+    applyTabBg('home');
+    await loadCatalog();
+    renderOrders();
+  }
 }
 
-async function doLogin() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-pass').value;
-  const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  initApp();
+function toggleAuth(m){
+  authMode = m;
+  document.getElementById('authName').classList.toggle('hidden', m==='login');
+  document.getElementById('authOldId').classList.toggle('hidden', m==='login');
+  document.getElementById('authSubmitBtn').innerText = m==='login' ? 'Login to Kissu Num' : 'Create Account';
 }
 
-async function doSignup() {
-  const name = document.getElementById('reg-name').value;
-  const email = document.getElementById('reg-email').value;
-  const password = document.getElementById('reg-pass').value;
-  const tg_id = document.getElementById('reg-tgid').value;
-  const r = await fetch('/api/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, email, password, tg_id}) }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  toast('Account Created!');
-  initApp();
+async function submitAuth(){
+  const url = authMode==='login' ? '/api/auth/login' : '/api/auth/signup';
+  const body = {
+    email: document.getElementById('authEmail').value,
+    password: document.getElementById('authPass').value,
+    full_name: document.getElementById('authName').value,
+    old_tg_id: document.getElementById('authOldId').value
+  };
+  const r = await (await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+  if(r.ok) location.reload();
+  else document.getElementById('authErr').innerText = r.error || 'Error';
 }
 
-async function doLogout() {
-  await fetch('/api/auth/logout', { method:'POST' });
+async function logout(){
+  await fetch('/api/auth/logout',{method:'POST'});
   location.reload();
 }
 
-async function initApp() {
-  const r = await fetch('/api/me').then(x=>x.json());
-  if (!r.ok) {
-    document.getElementById('auth-screen').classList.remove('hidden');
-    document.getElementById('main-app').classList.add('hidden');
-    return;
+async function loadCatalog(){
+  const r = await (await fetch('/api/catalog')).json();
+  if(r.ok){
+    catalogData = r;
+    const pop = r.services.slice(0,8);
+    document.getElementById('homePopularGrid').innerHTML = pop.map(s =>
+      `<button class="svc-btn" onclick="openService('${s.code}')">${s.icon} ${s.name}</button>`
+    ).join('');
+    renderServices();
+    renderCountries();
   }
-  state.user = r.user; state.services = r.services || {}; state.catalog = r.catalog || {}; state.orders = r.orders || [];
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('main-app').classList.remove('hidden');
-  updateBalUI(r.user.balance);
-  document.getElementById('user-greeting').textContent = `Hi, ${r.user.name} (${r.user.email})`;
-  document.getElementById('user-meta').textContent = `Account ID: ${r.user.uid} • Purchases: ${r.user.buys}`;
-  if (r.user.is_admin) document.getElementById('admin-nav-btn').classList.remove('hidden');
-  renderServiceTabs(); renderCountries(); renderOrders();
 }
 
-function updateBalUI(b) {
-  const txt = `₹${Number(b).toFixed(2)}`;
-  document.getElementById('top-bal').textContent = txt;
-  document.getElementById('hero-bal').textContent = txt;
-}
-
-function navTo(view) {
-  ['home','store','recharge','orders','terms','admin'].forEach(v => {
-    document.getElementById('view-'+v).classList.toggle('hidden', v !== view);
-    const n = document.getElementById('nav-'+v);
-    if (n) n.classList.toggle('active', v === view);
-  });
-  if (view === 'admin') loadAdminUsers();
-}
-
-function renderServiceTabs() {
-  const box = document.getElementById('srv-tabs');
-  box.innerHTML = Object.keys(state.services).map(k => {
-    const s = state.services[k];
-    return `<button class="srv-chip ${state.currentSrv === k ? 'active' : ''}" onclick="openService('${k}')">${s.icon} ${s.name}</button>`;
-  }).join('');
-}
-
-function openService(srv) {
-  state.currentSrv = srv;
-  renderServiceTabs();
-  navTo('store');
+function openService(code){
+  selectedSvc = code;
+  switchTab('buy');
+  renderServices();
   renderCountries();
 }
 
-function renderCountries() {
-  const q = (document.getElementById('country-search').value || '').toLowerCase();
-  const list = (state.catalog[state.currentSrv] || []).filter(c => c.name.toLowerCase().includes(q));
-  document.getElementById('country-list').innerHTML = list.map(c => `
+function renderServices(){
+  const q = (document.getElementById('svcSearch').value || '').toLowerCase();
+  const list = catalogData.services.filter(s => s.name.toLowerCase().includes(q));
+  document.getElementById('svcChips').innerHTML = list.map(s =>
+    `<div class="chip ${s.code===selectedSvc?'active':''}" onclick="selectedSvc='${s.code}';renderServices();renderCountries()">${s.icon} ${s.name}</div>`
+  ).join('');
+}
+
+function renderCountries(){
+  const q = (document.getElementById('countrySearch').value || '').toLowerCase();
+  const items = (catalogData.prices[selectedSvc] || []).filter(c => c.name.toLowerCase().includes(q));
+  const box = document.getElementById('countryList');
+  if(!items.length){ box.innerHTML = '<p style="text-align:center;color:#cdb4e2;padding:16px">No countries found</p>'; return; }
+  box.innerHTML = items.map(c => `
     <div class="country-row">
-      <div><b>${c.flag} ${c.name}</b><div style="font-size:11px; color:var(--muted);">Instant SMS Delivery</div></div>
-      <button class="price-tag" onclick="buyOtp('${state.currentSrv}','${c.id}')">Buy • ₹${c.price}</button>
-    </div>
-  `).join('') || '<div style="text-align:center; color:var(--muted); padding:20px;">No countries found</div>';
-}
-
-async function buyOtp(service, country_id) {
-  toast('Allocating virtual number...');
-  const r = await fetch('/api/otp/buy', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({service, country_id}) }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  updateBalUI(r.new_balance);
-  state.orders.unshift(r.order);
-  renderOrders(); navTo('orders');
-  toast('Number Ready! Waiting for OTP...');
-}
-
-function renderOrders() {
-  const el = document.getElementById('orders-list');
-  if (!state.orders.length) { el.innerHTML = '<div class="card" style="text-align:center; color:var(--muted);">No orders yet</div>'; return; }
-  el.innerHTML = state.orders.map(o => {
-    const left = Math.max(0, 1200 - Math.floor(Date.now()/1000 - o.created_at));
-    const mins = String(Math.floor(left/60)).padStart(2,'0');
-    const secs = String(left%60).padStart(2,'0');
-    return `
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <b>${o.service} • ${o.country}</b>
-        <span class="badge">${o.status === 'waiting' ? `⏳ ${mins}:${secs}` : o.status.toUpperCase()}</span>
-      </div>
-      <div style="font-size:16px; font-weight:800; color:#f9a8d4; margin-bottom:6px;">+${o.phone}</div>
-      ${o.otp ? `<div class="otp-box">${o.otp}</div>` : ''}
-      ${o.status === 'waiting' ? `<button class="btn btn-danger" style="margin-top:8px;" onclick="cancelOrder('${o.activation_id}')">❌ Cancel & Refund ₹${o.price}</button>` : ''}
-    </div>`;
-  }).join('');
-}
-
-async function cancelOrder(actId) {
-  const r = await fetch('/api/otp/cancel/' + actId, { method:'POST' }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  updateBalUI(r.new_balance);
-  const o = state.orders.find(x => x.activation_id === actId);
-  if (o) o.status = 'cancelled';
-  renderOrders(); toast('Order cancelled & refunded!');
-}
-
-setInterval(async () => {
-  if (!state.user) return;
-  let changed = false;
-  for (let o of state.orders) {
-    if (o.status === 'waiting') {
-      changed = true;
-      const r = await fetch('/api/otp/status/' + o.activation_id).then(x=>x.json());
-      if (r.ok && r.order) {
-        Object.assign(o, r.order);
-        if (r.new_balance !== undefined) updateBalUI(r.new_balance);
-        if (o.status === 'received') toast('✅ OTP Received: ' + o.otp);
-      }
-    }
-  }
-  if (changed) renderOrders();
-}, 4000);
-
-async function createDeposit(amount) {
-  if (!amount || Number(amount) < 10) return toast('Minimum deposit ₹10 hai!');
-  toast('Generating payment link...');
-  const r = await fetch('/api/deposit/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount}) }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  state.activeDepOrderId = r.order.order_id;
-  document.getElementById('pay-box').classList.remove('hidden');
-  document.getElementById('pay-order-id').textContent = 'Txn ID: ' + r.order.order_id;
-  document.getElementById('pay-qr').src = r.order.qr_url;
-  document.getElementById('pay-link-btn').href = r.order.payment_url;
-  document.getElementById('pay-summary').innerHTML = `Pay: <b>₹${r.order.amount}</b> • Fee (2%): -₹${r.order.fee} • Credit: <b style="color:#34d399;">₹${r.order.net_credit}</b>`;
-}
-
-async function verifyUtr() {
-  const utr = document.getElementById('utr-input').value.trim();
-  const r = await fetch('/api/deposit/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({order_id: state.activeDepOrderId, utr}) }).then(x=>x.json());
-  if (!r.ok) return toast(r.error);
-  updateBalUI(r.new_balance);
-  document.getElementById('pay-box').classList.add('hidden');
-  document.getElementById('utr-input').value = '';
-  toast(`✅ ₹${r.credited} Wallet me add ho gaye!`);
-}
-
-async function loadAdminUsers() {
-  const r = await fetch('/api/admin/users').then(x=>x.json());
-  if (!r.ok) return;
-  document.getElementById('admin-users-list').innerHTML = r.users.map(u => `
-    <div style="padding:8px 0; border-bottom:1px solid var(--border);">
-      <b>${u.nickname || u.email || 'User'}</b> (ID: <code>${u.uid}</code>)<br>
-      Bal: <b style="color:#34d399;">₹${u.balance}</b> | Buys: ${u.buys} | ${u.email || u.username}
+      <div><b>${c.flag} ${c.name}</b><div style="font-size:12px;color:#d6bfe8">Instant OTP • SastaSMS</div></div>
+      <button class="btn" style="width:auto;padding:8px 16px" onclick="buyNumber('${c.id}')">₹${c.price}</button>
     </div>
   `).join('');
 }
 
-async function adminUpdateBal() {
-  const target_uid = document.getElementById('adm-uid').value;
-  const delta = document.getElementById('adm-amt').value;
-  const r = await fetch('/api/admin/balance', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({target_uid, delta}) }).then(x=>x.json());
-  if (r.ok) { toast('Balance Updated: ₹' + r.new_balance); loadAdminUsers(); }
+async function buyNumber(cid){
+  if(!confirm('Confirm purchase?')) return;
+  const r = await (await fetch('/api/otp/buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({service:selectedSvc,country_id:cid})})).json();
+  if(!r.ok){ alert(r.error); return; }
+  document.getElementById('topBal').innerText = '₹' + r.new_balance.toFixed(2);
+  document.getElementById('mainBal').innerText = '₹' + r.new_balance.toFixed(2);
+  activeOrders.unshift({id:r.activation_id, number:r.number, price:r.price, code:'Waiting...'});
+  localStorage.setItem('kissu_orders', JSON.stringify(activeOrders));
+  switchTab('orders');
+  renderOrders();
 }
 
-initApp();
+function renderOrders(){
+  const box = document.getElementById('ordersList');
+  if(!activeOrders.length) return;
+  box.innerHTML = activeOrders.map((o,i) => `
+    <div class="country-row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;justify-content:space-between"><b>📱 +${o.number}</b><span>₹${o.price}</span></div>
+      <div style="font-size:14px;color:#fde047">OTP: <b id="otp-${o.id}">${o.code}</b></div>
+      <div class="grid2">
+        <button class="btn btn-green" style="padding:8px" onclick="checkOtp('${o.id}',${i})">🔄 Check OTP</button>
+        <button class="btn btn-dark" style="padding:8px" onclick="cancelOtp('${o.id}',${o.price},${i})">❌ Cancel</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function checkOtp(id, idx){
+  const r = await (await fetch('/api/otp/status?id='+id)).json();
+  if(r.code){
+    activeOrders[idx].code = r.code;
+    localStorage.setItem('kissu_orders', JSON.stringify(activeOrders));
+    renderOrders();
+  }else alert('Status: ' + r.status);
+}
+
+async function cancelOtp(id, price, idx){
+  const r = await (await fetch('/api/otp/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,price})})).json();
+  if(r.ok){
+    alert('Cancelled & Refunded ₹' + price);
+    activeOrders.splice(idx,1);
+    localStorage.setItem('kissu_orders', JSON.stringify(activeOrders));
+    location.reload();
+  }else alert(r.error);
+}
+
+async function createOrder(){
+  const amt = parseFloat(document.getElementById('rechAmt').value || 0);
+  const r = await (await fetch('/api/recharge/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:amt})})).json();
+  if(!r.ok){ alert(r.error); return; }
+  currentOrderId = r.order_id;
+  document.getElementById('payStepBox').classList.remove('hidden');
+  document.getElementById('paySummary').innerText = `Order: ${r.order_id} | Wallet Credit: ₹${r.wallet_credit} | Total Pay (with 2% fee): ₹${r.total_payable}`;
+  if(r.payment_url){
+    const a = document.getElementById('zapPayLink');
+    a.href = r.payment_url;
+    a.classList.remove('hidden');
+  }
+}
+
+async function verifyUtr(){
+  const utr = document.getElementById('utrInput').value.trim();
+  const r = await (await fetch('/api/recharge/verify-utr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:currentOrderId,utr})})).json();
+  if(r.ok){ alert('₹' + r.credited + ' Added!'); location.reload(); }
+  else alert(r.error);
+}
+
+function switchTab(t){
+  ['home','buy','recharge','orders','terms','admin'].forEach(x => {
+    document.getElementById('tab-'+x).classList.add('hidden');
+    const nb = document.getElementById('nav-'+x);
+    if(nb) nb.classList.remove('active');
+  });
+  document.getElementById('tab-'+t).classList.remove('hidden');
+  const activeNav = document.getElementById('nav-'+t);
+  if(activeNav) activeNav.classList.add('active');
+  applyTabBg(t);
+  if(t==='admin') loadAdmin();
+}
+
+async function loadAdmin(){
+  const r = await (await fetch('/api/admin/stats')).json();
+  if(r.ok){
+    document.getElementById('adminStatsBox').innerHTML = `Total Users: <b>${r.total_users}</b><br>Total User Wallet: <b>₹${r.total_user_balance}</b><br>SastaSMS API Balance: <b>${r.sasta_api_balance}</b>`;
+  }
+}
+
+async function adminAdjust(){
+  const r = await (await fetch('/api/admin/adjust-balance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:document.getElementById('adjTarget').value,amount:document.getElementById('adjAmt').value})})).json();
+  if(r.ok) alert('Updated! New Balance: ₹' + r.new_balance);
+  else alert(r.error);
+}
+
+init();
 </script>
 </body>
 </html>
