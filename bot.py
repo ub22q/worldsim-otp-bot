@@ -120,7 +120,10 @@ def get_full_catalog():
         for c in COUNTRIES:
             price = round((cfg["base"] * c["mult"]) + cfg["margin"], 2)
             items.append({
+                "id": c["id"],
                 "country_id": c["id"],
+                "name": c["name"],
+                "country": c["name"],
                 "country_name": c["name"],
                 "flag": c["flag"],
                 "price": price
@@ -141,13 +144,17 @@ def api_me():
             if not u:
                 session.clear()
                 return jsonify({"ok": False})
+            name = u["full_name"] or "Kissu"
             return jsonify({
                 "ok": True,
                 "user": {
+                    "id": u["user_id"],
                     "user_id": u["user_id"],
+                    "name": name,
+                    "full_name": name,
                     "balance": float(u["balance"]),
+                    "purchases": 0,
                     "email": u["email"],
-                    "full_name": u["full_name"] or "User",
                     "is_admin": is_admin(u["user_id"]),
                     "support": SUPPORT_HANDLE
                 }
@@ -160,7 +167,7 @@ def api_signup():
     data = request.json or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    full_name = (data.get("full_name") or "User").strip()
+    full_name = (data.get("full_name") or "Kissu").strip()
     old_tg_id = str(data.get("old_tg_id") or "").strip()
 
     if not email or "@" not in email or len(password) < 4:
@@ -229,8 +236,15 @@ def api_logout():
     return jsonify({"ok": True})
 @app.route("/api/catalog")
 def api_catalog():
-    services = [{"code": k, "name": v["name"], "icon": v["icon"]} for k, v in SERVICES_CONFIG.items()]
-    return jsonify({"ok": True, "services": services, "catalog": get_full_catalog()})
+    services = [{"code": k, "id": k, "name": v["name"], "icon": v["icon"]} for k, v in SERVICES_CONFIG.items()]
+    full_cat = get_full_catalog()
+    return jsonify({
+        "ok": True,
+        "services": services,
+        "countries": COUNTRIES,
+        "catalog": full_cat,
+        "prices": full_cat
+    })
 
 @app.route("/api/otp/buy", methods=["POST"])
 def api_otp_buy():
@@ -240,7 +254,7 @@ def api_otp_buy():
     uid = int(uid)
     data = request.json or {}
     service = str(data.get("service") or "")
-    country_id = str(data.get("country_id") or "")
+    country_id = str(data.get("country_id") or data.get("country") or "")
 
     catalog = get_full_catalog().get(service, [])
     country_item = next((c for c in catalog if c["country_id"] == country_id), None)
@@ -451,4 +465,3 @@ def api_admin_adjust():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-                 
