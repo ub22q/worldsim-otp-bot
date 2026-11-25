@@ -8,7 +8,12 @@ try:
     app.secret_key = bot.app.secret_key
     for rule in bot.app.url_map.iter_rules():
         if rule.rule.startswith("/api/"):
-            app.add_url_rule(rule.rule, endpoint=rule.endpoint, view_func=bot.app.view_functions[rule.endpoint], methods=rule.methods)
+            app.add_url_rule(
+                rule.rule,
+                endpoint=rule.endpoint,
+                view_func=bot.app.view_functions[rule.endpoint],
+                methods=rule.methods
+            )
 except Exception as e:
     print("Bot import note:", e)
 
@@ -36,4 +41,3 @@ def fallback_404(e):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
-    
