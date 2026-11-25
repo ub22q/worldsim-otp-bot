@@ -15,8 +15,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 SASTA_API_KEY = "stp_4905928f4de82481bad70ffd7d8da6b59e82e625396bebc3"
 SASTA_BASE_URL = "https://sastasms.com/stubs/handler_api.php"
 
-ZAPUPI_TOKEN = os.environ.get("ZAPUPI_TOKEN", "")
-ZAPUPI_SECRET = os.environ.get("ZAPUPI_SECRET", "")
+ZAPUPI_KEY = "zap3995edfa3c8d358e7823d854fe83cf2c"
 
 SECRET_ADMIN_EMAIL = "acchi.bachii@gmail.com"
 SECRET_ADMIN_ID = 8539777823
@@ -95,7 +94,6 @@ COUNTRIES = [
     {"id": "22", "name": "India", "flag": "🇮🇳", "mult": 1.2}
 ]
 
-# Telegram & WhatsApp exact bot pricing, baaki sab SastaSMS base + ₹5 margin
 SERVICES_CONFIG = {
     "tg": {"name": "Telegram", "icon": "✈️", "fixed": True, "prices": {"6": 35, "151": 38, "187": 42, "33": 38, "31": 40, "36": 45, "66": 36, "22": 42}},
     "wa": {"name": "WhatsApp", "icon": "💬", "fixed": True, "prices": {"6": 35, "151": 40, "187": 45, "33": 38, "31": 42, "36": 48, "66": 38, "22": 45}},
@@ -323,12 +321,17 @@ def api_recharge_create():
     finally:
         conn.close()
     pay_url = ""
-    if ZAPUPI_TOKEN and ZAPUPI_SECRET:
-        try:
-            r = requests.post("https://api.zapupi.com/api/create-order", data={"token_key": ZAPUPI_TOKEN, "secret_key": ZAPUPI_SECRET, "amount": str(total_payable), "order_id": order_id, "custumer_mobile": "9999999999", "redirect_url": request.host_url}, timeout=15).json()
-            pay_url = r.get("payment_url") or r.get("data", {}).get("payment_url") or ""
-        except Exception:
-            pass
+    try:
+        r = requests.post("https://panel.zapupi.com/api/create-order", json={
+            "zap_key": ZAPUPI_KEY,
+            "amount": str(total_payable),
+            "order_id": order_id,
+            "customer_mobile": "9999999999",
+            "redirect_url": request.host_url
+        }, timeout=15).json()
+        pay_url = r.get("payment_url") or (r.get("data") or {}).get("payment_url") or ""
+    except Exception as e:
+        print("ZapUPI Order Note:", e)
     return jsonify({"ok": True, "order_id": order_id, "wallet_credit": amount, "fee": fee, "total_payable": total_payable, "payment_url": pay_url})
 
 @app.route("/api/recharge/verify-utr", methods=["POST"])
