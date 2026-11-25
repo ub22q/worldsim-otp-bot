@@ -1,14 +1,14 @@
-from bot import app
+from bot import app as flask_app
 
-app.url_map._rules = [r for r in app.url_map._rules if r.rule != '/']
-app.url_map._rules_by_endpoint.pop('index', None)
-app.url_map._rules_by_endpoint.pop('home_page', None)
-
-@app.route("/")
-def serve_kissu_app():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+def app(environ, start_response):
+    path = environ.get("PATH_INFO", "")
+    if path in ("", "/", "/index.html"):
+        with open("index.html", "rb") as f:
+            html = f.read()
+        start_response("200 OK", [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Content-Length", str(len(html)))
+        ])
+        return [html]
+    return flask_app(environ, start_response)
     
